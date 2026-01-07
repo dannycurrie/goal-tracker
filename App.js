@@ -38,7 +38,7 @@ const ProgressRing = ({ progress, size = 140, strokeWidth = 8 }) => {
   );
 };
 
-const MetricCircle = ({ title, icon, currentValue, goal, onPress, onDoublePress }) => {
+const MetricCircle = ({ title, icon, currentValue, goal, onPress, onDoublePress, timeframe = 'week' }) => {
   const progress = goal > 0 ? Math.min(currentValue / goal, 1) : 0;
   const lastTap = useRef(null);
 
@@ -66,6 +66,8 @@ const MetricCircle = ({ title, icon, currentValue, goal, onPress, onDoublePress 
     }
   };
 
+  const progressText = `${currentValue} / ${goal} this ${timeframe}`;
+
   return (
     <TouchableOpacity style={styles.metricContainer} onPress={handlePress}>
       <View style={styles.circle}>
@@ -75,7 +77,7 @@ const MetricCircle = ({ title, icon, currentValue, goal, onPress, onDoublePress 
         </View>
       </View>
       <Text style={styles.metricTitle}>{title}</Text>
-      <Text style={styles.metricProgress}>{currentValue} / {goal}</Text>
+      <Text style={styles.metricProgress}>{progressText}</Text>
     </TouchableOpacity>
   );
 };
@@ -508,6 +510,7 @@ export default function App() {
               goal={metric.goal}
               onPress={() => handleIncrementMetric(metric.id)}
               onDoublePress={() => handleEditMetric(metric.id)}
+              timeframe={metric.timeframe}
             />
           ))}
           <AddButton onPress={() => setShowAddModal(true)} />

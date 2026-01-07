@@ -181,7 +181,7 @@ const dbHelpers = {
         id: data.id,
         metricId: data.metric_id,
         value: data.value,
-        loggedAt: data.logged_at
+        createdAt: data.created_at
       };
 
       callback(null, formattedData);
@@ -197,7 +197,7 @@ const dbHelpers = {
         .from('metric_logs')
         .select('*')
         .eq('metric_id', metricId)
-        .order('logged_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -206,7 +206,7 @@ const dbHelpers = {
         id: log.id,
         metricId: log.metric_id,
         value: log.value,
-        loggedAt: log.logged_at
+        createdAt: log.created_at
       }));
 
       callback(null, formattedData);

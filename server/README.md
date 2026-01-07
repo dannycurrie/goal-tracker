@@ -54,7 +54,7 @@ CREATE TABLE metric_logs (
   id BIGSERIAL PRIMARY KEY,
   metric_id BIGINT REFERENCES metrics(id) ON DELETE CASCADE,
   value INTEGER NOT NULL,
-  logged_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 

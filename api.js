@@ -2,9 +2,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 
 const getApiUrl = () => {
-    const hostUri = Constants.expoConfig?.hostUri;
-    const ip = hostUri?.split(':')[0];
-    return `http://${ip}:3000/api`;
+  return 'https://goal-tracker-zeta-five.vercel.app/api';
 };
 
 const API_URL = getApiUrl();
