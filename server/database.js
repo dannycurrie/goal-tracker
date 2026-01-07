@@ -51,7 +51,7 @@ const dbHelpers = {
   // Create a new metric
   createMetric: async (metric, callback) => {
     try {
-      const { title, icon, unit, timeframe, goal, currentValue = 0 } = metric;
+      const { title, icon, unit, timeframe, goal, currentValue = 0, type = 'cumulative' } = metric;
 
       const { data, error } = await supabase
         .from('metrics')
@@ -62,6 +62,7 @@ const dbHelpers = {
           timeframe,
           goal,
           current_value: currentValue,
+          type,
           archived: false
         }])
         .select()
@@ -78,6 +79,7 @@ const dbHelpers = {
         timeframe: data.timeframe,
         goal: data.goal,
         currentValue: data.current_value,
+        type: data.type,
         archived: data.archived,
         createdAt: data.created_at,
         updatedAt: data.updated_at
@@ -92,19 +94,26 @@ const dbHelpers = {
   // Update a metric
   updateMetric: async (id, metric, callback) => {
     try {
-      const { title, icon, unit, timeframe, goal, currentValue } = metric;
+      const { title, icon, unit, timeframe, goal, currentValue, type } = metric;
+
+      const updateData = {
+        title,
+        icon,
+        unit,
+        timeframe,
+        goal,
+        current_value: currentValue,
+        updated_at: new Date().toISOString()
+      };
+
+      // Include type if provided
+      if (type) {
+        updateData.type = type;
+      }
 
       const { data, error } = await supabase
         .from('metrics')
-        .update({
-          title,
-          icon,
-          unit,
-          timeframe,
-          goal,
-          current_value: currentValue,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', id)
         .select();
 
