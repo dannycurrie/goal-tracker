@@ -27,7 +27,13 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
   }, [metric]);
 
   const handleSave = () => {
-    if (!unit.trim() || !goal.trim() || !icon.trim()) {
+    // Basic validation
+    if (!unit.trim() || !icon.trim()) {
+      return;
+    }
+
+    // Goal required for cumulative/timed
+    if (metric.type !== 'checkin' && !goal.trim()) {
       return;
     }
 
@@ -37,7 +43,7 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
       icon: icon,
       unit: unit,
       timeframe: timeframe,
-      goal: parseInt(goal, 10),
+      goal: metric.type === 'checkin' ? null : parseInt(goal, 10),
       currentValue: parseInt(currentValue, 10),
     });
   };
@@ -78,12 +84,12 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
               <Text style={styles.label}>Metric Type</Text>
               <View style={styles.typeDisplay}>
                 <Text style={styles.typeValue}>
-                  {metric?.type === 'timed' ? 'TIMED' : 'CUMULATIVE'}
+                  {metric?.type === 'timed' ? 'TIMED' :
+                   metric?.type === 'checkin' ? 'CHECK-IN' : 'CUMULATIVE'}
                 </Text>
                 <Text style={styles.typeHint}>
-                  {metric?.type === 'timed'
-                    ? 'Tracks time duration'
-                    : 'Tracks count increments'}
+                  {metric?.type === 'timed' ? 'Tracks time duration' :
+                   metric?.type === 'checkin' ? 'Collects 1-5 ratings' : 'Tracks count increments'}
                 </Text>
               </View>
             </View>
@@ -134,17 +140,19 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
               </View>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Goal (per {timeframe})</Text>
-              <TextInput
-                style={styles.input}
-                value={goal}
-                onChangeText={setGoal}
-                placeholder="e.g., 10"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </View>
+            {metric?.type !== 'checkin' && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Goal (per {timeframe})</Text>
+                <TextInput
+                  style={styles.input}
+                  value={goal}
+                  onChangeText={setGoal}
+                  placeholder="e.g., 10"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
 
             <TouchableOpacity style={styles.archiveButton} onPress={handleArchive}>
               <Text style={styles.archiveButtonText}>ARCHIVE METRIC</Text>

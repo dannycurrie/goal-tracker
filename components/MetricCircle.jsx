@@ -2,8 +2,11 @@ import { useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import ProgressRing from './ProgressRing';
 
-const MetricCircle = ({ metric, isTimerRunning, timerElapsed, onPress, onDoublePress }) => {
-  const progress = metric.goal > 0 ? Math.min(metric.currentValue / metric.goal, 1) : 0;
+const MetricCircle = ({ metric, isTimerRunning, timerElapsed, averageValue, onPress, onDoublePress }) => {
+  // No progress for check-in metrics
+  const progress = metric.type === 'checkin'
+    ? 0
+    : (metric.goal > 0 ? Math.min(metric.currentValue / metric.goal, 1) : 0);
   const lastTap = useRef(null);
 
   const handlePress = () => {
@@ -47,16 +50,22 @@ const MetricCircle = ({ metric, isTimerRunning, timerElapsed, onPress, onDoubleP
       const seconds = timerElapsed % 60;
       return `Running: ${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
+
+    if (metric.type === 'checkin') {
+      return averageValue ? `Avg: ${averageValue} this ${metric.timeframe}` : 'No check-ins yet';
+    }
+
     return `${metric.currentValue} / ${metric.goal} this ${metric.timeframe}`;
-  }, [metric, isTimerRunning, timerElapsed]);
+  }, [metric, isTimerRunning, timerElapsed, averageValue]);
 
   return (
     <TouchableOpacity style={styles.metricContainer} onPress={handlePress}>
       <View style={styles.circle}>
-        <ProgressRing progress={progress} />
+        {metric.type !== 'checkin' && <ProgressRing progress={progress} />}
         <View style={[
           styles.iconContainer,
-          isTimerRunning && styles.iconContainerActive
+          isTimerRunning && styles.iconContainerActive,
+          metric.type === 'checkin' && styles.iconContainerCheckin
         ]}>
           <Text style={styles.icon}>{metric.icon}</Text>
         </View>
@@ -95,6 +104,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 10,
+  },
+  iconContainerCheckin: {
+    backgroundColor: '#FFA07A',
   },
   icon: {
     fontSize: 50,

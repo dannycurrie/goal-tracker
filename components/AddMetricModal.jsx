@@ -9,7 +9,13 @@ const AddMetricModal = ({ visible, onClose, onSave }) => {
   const [type, setType] = useState('cumulative');
 
   const handleSave = () => {
-    if (!unit.trim() || !goal.trim() || !icon.trim()) {
+    // Basic validation
+    if (!unit.trim() || !icon.trim()) {
+      return;
+    }
+
+    // Goal is required for cumulative/timed
+    if (type !== 'checkin' && !goal.trim()) {
       return;
     }
 
@@ -19,7 +25,7 @@ const AddMetricModal = ({ visible, onClose, onSave }) => {
       icon: icon,
       unit: unit,
       timeframe: timeframe,
-      goal: parseInt(goal, 10),
+      goal: type === 'checkin' ? null : parseInt(goal, 10),
       currentValue: 0,
       type: type,
     });
@@ -91,6 +97,22 @@ const AddMetricModal = ({ visible, onClose, onSave }) => {
                 </Text>
                 <Text style={styles.typeDescription}>Start/stop timer</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.typeButton,
+                  type === 'checkin' && styles.typeButtonActive
+                ]}
+                onPress={() => setType('checkin')}
+              >
+                <Text style={[
+                  styles.typeText,
+                  type === 'checkin' && styles.typeTextActive
+                ]}>
+                  CHECK-IN
+                </Text>
+                <Text style={styles.typeDescription}>Rate 1-5</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -128,17 +150,19 @@ const AddMetricModal = ({ visible, onClose, onSave }) => {
             </View>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Goal (per {timeframe})</Text>
-            <TextInput
-              style={styles.input}
-              value={goal}
-              onChangeText={setGoal}
-              placeholder="e.g., 10"
-              placeholderTextColor="#999"
-              keyboardType="numeric"
-            />
-          </View>
+          {type !== 'checkin' && (
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Goal (per {timeframe})</Text>
+              <TextInput
+                style={styles.input}
+                value={goal}
+                onChangeText={setGoal}
+                placeholder="e.g., 10"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+            </View>
+          )}
 
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
@@ -222,10 +246,10 @@ const styles = StyleSheet.create({
   },
   typeButton: {
     flex: 1,
-    padding: 15,
+    padding: 12,
     backgroundColor: '#F5F5F5',
     borderRadius: 10,
-    marginHorizontal: 5,
+    marginHorizontal: 3,
     alignItems: 'center',
   },
   typeButtonActive: {

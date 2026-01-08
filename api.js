@@ -1,13 +1,7 @@
 import axios from 'axios';
 
-const getApiUrl = () => {
-  if (__DEV__) {
-    return 'http://192.168.1.66:3000/api';
-  }
-  return 'https://goal-tracker-zeta-five.vercel.app/api';
-};
 const api = axios.create({
-  baseURL: getApiUrl(),
+  baseURL: process.env.API_URL || 'http://192.168.1.66:3000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

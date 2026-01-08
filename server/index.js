@@ -53,11 +53,16 @@ app.get('/api/metrics/:id', (req, res) => {
 
 // Create a new metric
 app.post('/api/metrics', (req, res) => {
-  const { title, icon, unit, timeframe, goal, currentValue } = req.body;
+  const { title, icon, unit, timeframe, goal, currentValue, type } = req.body;
 
   // Validation
-  if (!title || !icon || !unit || !timeframe || goal === undefined) {
+  if (!title || !icon || !unit || !timeframe) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Goal is required for cumulative/timed, optional for checkin
+  if (type !== 'checkin' && goal === undefined) {
+    return res.status(400).json({ error: 'Goal is required for cumulative and timed metrics' });
   }
 
   if (!['week', 'month', 'year'].includes(timeframe)) {
@@ -74,7 +79,7 @@ app.post('/api/metrics', (req, res) => {
 });
 
 // Update a metric
-app.put('/api/metrics/:id', (req, res) => {
+app.put('/api/metrics/:id', async (req, res) => {
   const { id } = req.params;
   const { title, icon, unit, timeframe, goal, currentValue } = req.body;
 
@@ -82,6 +87,26 @@ app.put('/api/metrics/:id', (req, res) => {
   if (!title || !icon || !unit || !timeframe || goal === undefined || currentValue === undefined) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  // if value is changed, log the entry
+  dbHelpers.getMetricById(id, (err, metric) => {
+    if (err) {
+      console.error('Error fetching metric:', err);
+      return res.status(500).json({ error: 'Failed to fetch metric' });
+    }
+    if (metric.current_value !== currentValue) {
+      const savedValue = metric.current_value || 0;
+      const editedValue = currentValue;
+      const diff = editedValue - savedValue;
+      if (diff !== 0) {
+        dbHelpers.logMetricEntry(id, diff, (err) => {
+          if (err) {
+            console.error('Error logging metric entry:', err);
+          }
+        });
+      }
+    }
+  });
 
   dbHelpers.updateMetric(id, req.body, (err) => {
     if (err) {

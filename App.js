@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { metricsApi } from './api';
-import { MetricCircle, AddButton, AddMetricModal, EditMetricModal } from './components';
+import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal } from './components';
 
 export default function App() {
   const [metrics, setMetrics] = useState([]);
@@ -10,6 +10,9 @@ export default function App() {
   const [editingMetric, setEditingMetric] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTimer, setActiveTimer] = useState(null);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [checkInMetric, setCheckInMetric] = useState(null);
+  const [metricAverages, setMetricAverages] = useState({});
 
   // Load metrics from API on mount
   useEffect(() => {
@@ -186,6 +189,44 @@ export default function App() {
     }
   };
 
+  const handleCheckIn = (metric) => {
+    setCheckInMetric(metric);
+    setShowCheckInModal(true);
+  };
+
+  const handleSaveCheckIn = async (value) => {
+    if (!checkInMetric) return;
+
+    try {
+      // Update metric's current_value to the new rating
+      const updatedMetric = {
+        ...checkInMetric,
+        currentValue: value
+      };
+
+      // Optimistic update
+      setMetrics(metrics.map(m =>
+        m.id === checkInMetric.id
+          ? { ...m, currentValue: value }
+          : m
+      ));
+
+      // Save to API
+      await metricsApi.update(checkInMetric.id, updatedMetric);
+
+      // Close modal
+      setShowCheckInModal(false);
+      setCheckInMetric(null);
+
+      // Recalculate averages
+      await calculateCheckInAverages();
+    } catch (error) {
+      console.error('Failed to save check-in:', error);
+      await loadMetrics();
+      alert('Failed to save check-in. Please try again.');
+    }
+  };
+
   const handleMetricPress = (metric) => {
     console.log('handle metric press: metric', metric);
     if (metric.type === 'timed') {
@@ -195,10 +236,49 @@ export default function App() {
       } else {
         handleStartTimer(metric.id);
       }
+    } else if (metric.type === 'checkin') {
+      // Open check-in modal
+      handleCheckIn(metric);
     } else {
       // Cumulative - increment as before
       handleIncrementMetric(metric.id);
     }
+  };
+
+  const calculateCheckInAverages = async () => {
+    const checkinMetrics = metrics.filter(m => m.type === 'checkin');
+    const averages = {};
+
+    for (const metric of checkinMetrics) {
+      try {
+        const logs = await metricsApi.getLogs(metric.id);
+
+        // Filter logs by timeframe
+        const now = new Date();
+        const filteredLogs = logs.filter(log => {
+          const logDate = new Date(log.createdAt);
+          const diffMs = now - logDate;
+          const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+          if (metric.timeframe === 'week') return diffDays <= 7;
+          if (metric.timeframe === 'month') return diffDays <= 30;
+          if (metric.timeframe === 'year') return diffDays <= 365;
+          return true;
+        });
+
+        if (filteredLogs.length > 0) {
+          const sum = filteredLogs.reduce((acc, log) => acc + log.value, 0);
+          averages[metric.id] = (sum / filteredLogs.length).toFixed(1);
+        } else {
+          averages[metric.id] = '-';
+        }
+      } catch (error) {
+        console.error(`Failed to fetch logs for metric ${metric.id}:`, error);
+        averages[metric.id] = '-';
+      }
+    }
+
+    setMetricAverages(averages);
   };
 
   // Update timer elapsed time every second
@@ -214,6 +294,13 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [activeTimer]);
+
+  // Calculate averages when metrics change
+  useEffect(() => {
+    if (metrics.length > 0) {
+      calculateCheckInAverages();
+    }
+  }, [metrics]);
 
   // Filter out archived metrics
   const activeMetrics = metrics.filter(m => !m.archived);
@@ -241,6 +328,7 @@ export default function App() {
               metric={metric}
               isTimerRunning={activeTimer?.metricId === metric.id}
               timerElapsed={activeTimer?.metricId === metric.id ? activeTimer.elapsed : 0}
+              averageValue={metricAverages[metric.id]}
               onPress={() => handleMetricPress(metric)}
               onDoublePress={() => handleEditMetric(metric.id)}
             />
@@ -270,6 +358,16 @@ export default function App() {
         onClose={() => setEditingMetric(null)}
         onSave={handleSaveEdit}
         onArchive={handleArchiveMetric}
+      />
+
+      <CheckInModal
+        visible={showCheckInModal}
+        metric={checkInMetric}
+        onClose={() => {
+          setShowCheckInModal(false);
+          setCheckInMetric(null);
+        }}
+        onSave={handleSaveCheckIn}
       />
     </View>
   );
