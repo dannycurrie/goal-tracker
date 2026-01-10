@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.API_URL || 'http://192.168.1.66:3000/api',
+  baseURL: 'https://goal-tracker-zeta-five.vercel.app/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -72,6 +72,17 @@ export const metricsApi = {
       return response.data.metric;
     } catch (error) {
       console.error('Error incrementing metric:', error);
+      throw error;
+    }
+  },
+
+  // Reset metric value
+  reset: async (id) => {
+    try {
+      const response = await api.post(`/metrics/${id}/reset`);
+      return response.data.metric;
+    } catch (error) {
+      console.error('Error resetting metric:', error);
       throw error;
     }
   },

@@ -81,6 +81,7 @@ const dbHelpers = {
         currentValue: data.current_value,
         type: data.type,
         archived: data.archived,
+        lastReset: data.last_reset,
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };
@@ -219,6 +220,27 @@ const dbHelpers = {
       }));
 
       callback(null, formattedData);
+    } catch (error) {
+      callback(error);
+    }
+  },
+
+  // Reset a metric's current value
+  resetMetric: async (id, callback) => {
+    try {
+      const { data, error } = await supabase
+        .from('metrics')
+        .update({
+          current_value: 0,
+          last_reset: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      callback(null, data);
     } catch (error) {
       callback(error);
     }

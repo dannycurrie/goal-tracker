@@ -157,6 +157,19 @@ app.post('/api/metrics/:id/increment', (req, res) => {
   });
 });
 
+// Reset a metric's current value
+app.post('/api/metrics/:id/reset', (req, res) => {
+  const { id } = req.params;
+
+  dbHelpers.resetMetric(id, (err, metric) => {
+    if (err) {
+      console.error('Error resetting metric:', err);
+      return res.status(500).json({ error: 'Failed to reset metric' });
+    }
+    res.json({ metric, message: 'Metric reset successfully' });
+  });
+});
+
 // ===== METRIC LOGS ENDPOINTS =====
 
 // Get logs for a specific metric

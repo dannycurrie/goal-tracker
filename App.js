@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal } from './components';
+import { needsReset } from './components/utils';
 
 export default function App() {
   const [metrics, setMetrics] = useState([]);
@@ -13,6 +14,7 @@ export default function App() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInMetric, setCheckInMetric] = useState(null);
   const [metricAverages, setMetricAverages] = useState({});
+  const [hasCheckedResets, setHasCheckedResets] = useState(false);
 
   // Load metrics from API on mount
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function App() {
         currentValue: metric.current_value,
         archived: metric.archived,
         type: metric.type || 'cumulative',
+        lastReset: metric.last_reset,
       }));
 
       setMetrics(formattedMetrics);
@@ -44,6 +47,33 @@ export default function App() {
       setMetrics([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkAndResetMetrics = async () => {
+    const now = new Date();
+    const metricsToReset = [];
+
+    for (const metric of metrics) {
+      if (needsReset(metric, now)) {
+        metricsToReset.push(metric);
+      }
+    }
+
+    if (metricsToReset.length > 0) {
+      console.log(`Resetting ${metricsToReset.length} metrics...`);
+
+      // Reset all metrics that need it
+      for (const metric of metricsToReset) {
+        try {
+          await metricsApi.reset(metric.id);
+        } catch (error) {
+          console.error(`Failed to reset metric ${metric.id}:`, error);
+        }
+      }
+
+      // Reload metrics to get updated values
+      await loadMetrics();
     }
   };
 
@@ -63,6 +93,7 @@ export default function App() {
         currentValue: createdMetric.currentValue,
         archived: createdMetric.archived,
         type: createdMetric.type || 'cumulative',
+        lastReset: createdMetric.lastReset || new Date().toISOString(),
       };
 
       console.log('handle add metric: formattedMetric', formattedMetric);
@@ -302,6 +333,14 @@ export default function App() {
     }
   }, [metrics]);
 
+  // Check and reset metrics on app load (once)
+  useEffect(() => {
+    if (metrics.length > 0 && !loading && !hasCheckedResets) {
+      setHasCheckedResets(true);
+      checkAndResetMetrics();
+    }
+  }, [metrics, loading, hasCheckedResets]);
+
   // Filter out archived metrics
   const activeMetrics = metrics.filter(m => !m.archived);
 
@@ -340,9 +379,9 @@ export default function App() {
         <TouchableOpacity style={styles.navButton}>
           <Text style={styles.navIcon}>⚙️</Text>
         </TouchableOpacity>
-        <Text style={styles.navTitle}>STREAKS</Text>
+        <Text style={styles.navTitle}>TRACKER</Text>
         <TouchableOpacity style={styles.navButton}>
-          <Text style={styles.navIcon}>📅</Text>
+          <Text style={styles.navDate}>{currentDateString}</Text>
         </TouchableOpacity>
       </View>
 
@@ -404,6 +443,15 @@ const styles = StyleSheet.create({
   },
   navIcon: {
     fontSize: 24,
+  },
+  navDate: {
+    fontSize: 16,
+    paddingRight: 10,
+    width: 100,
+    textAlign: 'center',
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
   navTitle: {
     color: '#FFFFFF',
