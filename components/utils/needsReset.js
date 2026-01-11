@@ -1,14 +1,3 @@
-  /**
-   *
-   * @returns {string} The current date string in the format of DD MMM e.g. 9 Jan, 14 Mar
-   */
-  const getCurrentDateString = () => {
-    const currentDate = new Date();
-    const day = currentDate.getDate();
-    const month = currentDate.toLocaleString('default', { month: 'short' });
-    return `${day} ${month}`;
-  };
-  const currentDateString = getCurrentDateString();
   
     // Date comparison helper functions for reset checking
     const isSameWeek = (date1, date2) => {

@@ -5,6 +5,18 @@ import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal } from './components';
 import { needsReset } from './components/utils';
 
+/**
+   *
+   * @returns {string} The current date string in the format of DD MMM e.g. 9 Jan, 14 Mar
+   */
+const getCurrentDateString = () => {
+  const currentDate = new Date();
+  const day = currentDate.getDate();
+  const month = currentDate.toLocaleString('default', { month: 'short' });
+  return `${day} ${month}`;
+};
+const currentDateString = getCurrentDateString(); 
+
 export default function App() {
   const [metrics, setMetrics] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
