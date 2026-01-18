@@ -1,9 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal } from './components';
 import { needsReset } from './components/utils';
+import { storage } from './storage';
+import { useNetworkStatus } from './networkStatus';
+import { offlineQueue, OP_TYPES } from './offlineQueue';
 
 /**
    *
@@ -27,11 +30,68 @@ export default function App() {
   const [checkInMetric, setCheckInMetric] = useState(null);
   const [metricAverages, setMetricAverages] = useState({});
   const [hasCheckedResets, setHasCheckedResets] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { isOnline, isInitialized } = useNetworkStatus();
+  const wasOnlineRef = useRef(isOnline);
+  const hasInitializedRef = useRef(false);
 
-  // Load metrics from API on mount
+  // Initialize app: load from cache first, then sync if online
   useEffect(() => {
-    loadMetrics();
-  }, []);
+    const initializeApp = async () => {
+      if (hasInitializedRef.current) return;
+      hasInitializedRef.current = true;
+
+      // Initialize offline queue
+      await offlineQueue.init();
+
+      // Load cached metrics first (instant UI)
+      const cachedMetrics = await storage.loadMetrics();
+      if (cachedMetrics && cachedMetrics.length > 0) {
+        setMetrics(cachedMetrics);
+        setLoading(false);
+      }
+
+      // If online, sync with server
+      if (isOnline) {
+        await syncWithServer();
+      } else {
+        setLoading(false);
+      }
+    };
+
+    if (isInitialized) {
+      initializeApp();
+    }
+  }, [isInitialized]);
+
+  // When coming back online, process queue and sync
+  useEffect(() => {
+    if (isInitialized && isOnline && !wasOnlineRef.current) {
+      console.log('Back online, syncing...');
+      syncWithServer();
+    }
+    wasOnlineRef.current = isOnline;
+  }, [isOnline, isInitialized]);
+
+  const syncWithServer = async () => {
+    setIsSyncing(true);
+    try {
+      // Process any queued offline operations first
+      if (offlineQueue.hasPending()) {
+        console.log('Processing offline queue...');
+        const result = await offlineQueue.processQueue(metricsApi);
+        console.log(`Processed ${result.processed} operations, ${result.failed} failed`);
+      }
+
+      // Fetch fresh data from server
+      await loadMetrics();
+      await storage.saveLastSyncTime();
+    } catch (error) {
+      console.error('Sync failed:', error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const loadMetrics = async () => {
     try {
@@ -53,13 +113,23 @@ export default function App() {
       }));
 
       setMetrics(formattedMetrics);
+      // Cache the fresh data
+      await storage.saveMetrics(formattedMetrics);
     } catch (error) {
       console.error('Failed to load metrics:', error);
-      // Continue with empty metrics on error
-      setMetrics([]);
+      // Keep current metrics if we have them, otherwise empty
+      if (metrics.length === 0) {
+        setMetrics([]);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper to update metrics and persist to cache
+  const updateMetricsWithCache = async (newMetrics) => {
+    setMetrics(newMetrics);
+    await storage.saveMetrics(newMetrics);
   };
 
   const checkAndResetMetrics = async () => {
@@ -75,68 +145,105 @@ export default function App() {
     if (metricsToReset.length > 0) {
       console.log(`Resetting ${metricsToReset.length} metrics...`);
 
-      // Reset all metrics that need it
+      // Update local state immediately
+      const updatedMetrics = metrics.map(m => {
+        if (metricsToReset.find(r => r.id === m.id)) {
+          return { ...m, currentValue: 0, lastReset: now.toISOString() };
+        }
+        return m;
+      });
+      await updateMetricsWithCache(updatedMetrics);
+
+      // Reset via API or queue
       for (const metric of metricsToReset) {
-        try {
-          await metricsApi.reset(metric.id);
-        } catch (error) {
-          console.error(`Failed to reset metric ${metric.id}:`, error);
+        if (isOnline) {
+          try {
+            await metricsApi.reset(metric.id);
+          } catch (error) {
+            console.error(`Failed to reset metric ${metric.id}:`, error);
+          }
+        } else {
+          await offlineQueue.add(OP_TYPES.RESET, metric.id);
         }
       }
-
-      // Reload metrics to get updated values
-      await loadMetrics();
     }
   };
 
   const handleAddMetric = async (newMetric) => {
-    try {
-      const createdMetric = await metricsApi.create(newMetric);
-      console.log('handle add metric: createdMetric', createdMetric);
+    // Create a temporary local metric
+    const tempId = `temp_${Date.now()}`;
+    const formattedMetric = {
+      id: tempId,
+      title: newMetric.title,
+      icon: newMetric.icon,
+      unit: newMetric.unit,
+      timeframe: newMetric.timeframe,
+      goal: newMetric.goal,
+      currentValue: newMetric.currentValue || 0,
+      archived: false,
+      type: newMetric.type || 'cumulative',
+      lastReset: new Date().toISOString(),
+    };
 
-      // Format response
-      const formattedMetric = {
-        id: createdMetric.id,
-        title: createdMetric.title,
-        icon: createdMetric.icon,
-        unit: createdMetric.unit,
-        timeframe: createdMetric.timeframe,
-        goal: createdMetric.goal,
-        currentValue: createdMetric.currentValue,
-        archived: createdMetric.archived,
-        type: createdMetric.type || 'cumulative',
-        lastReset: createdMetric.lastReset || new Date().toISOString(),
-      };
+    // Update local state immediately
+    const newMetrics = [...metrics, formattedMetric];
+    await updateMetricsWithCache(newMetrics);
+    setShowAddModal(false);
 
-      console.log('handle add metric: formattedMetric', formattedMetric);
-
-      setMetrics([...metrics, formattedMetric]);
-      setShowAddModal(false);
-    } catch (error) {
-      console.error('Failed to create metric:', error);
-      alert('Failed to create metric. Please try again.');
+    if (isOnline) {
+      try {
+        const createdMetric = await metricsApi.create(newMetric);
+        // Replace temp metric with real one from server
+        const updatedMetrics = newMetrics.map(m =>
+          m.id === tempId
+            ? {
+                id: createdMetric.id,
+                title: createdMetric.title,
+                icon: createdMetric.icon,
+                unit: createdMetric.unit,
+                timeframe: createdMetric.timeframe,
+                goal: createdMetric.goal,
+                currentValue: createdMetric.currentValue,
+                archived: createdMetric.archived,
+                type: createdMetric.type || 'cumulative',
+                lastReset: createdMetric.lastReset || new Date().toISOString(),
+              }
+            : m
+        );
+        await updateMetricsWithCache(updatedMetrics);
+      } catch (error) {
+        console.error('Failed to create metric:', error);
+        // Revert on error
+        await updateMetricsWithCache(metrics);
+        alert('Failed to create metric. Please try again.');
+      }
+    } else {
+      // Queue for later
+      await offlineQueue.add(OP_TYPES.CREATE, tempId, newMetric);
     }
   };
 
   const handleIncrementMetric = async (metricId) => {
-    // Optimistically update UI
-    setMetrics(metrics.map(metric =>
+    // Optimistically update UI and cache
+    const updatedMetrics = metrics.map(metric =>
       metric.id === metricId
         ? { ...metric, currentValue: metric.currentValue + 1 }
         : metric
-    ));
+    );
+    await updateMetricsWithCache(updatedMetrics);
 
-    try {
-      await metricsApi.increment(metricId);
-    } catch (error) {
-      console.error('Failed to increment metric:', error);
-      // Revert on error
-      setMetrics(metrics.map(metric =>
-        metric.id === metricId
-          ? { ...metric, currentValue: metric.currentValue - 1 }
-          : metric
-      ));
-      alert('Failed to update metric. Please try again.');
+    if (isOnline) {
+      try {
+        await metricsApi.increment(metricId);
+      } catch (error) {
+        console.error('Failed to increment metric:', error);
+        // Revert on error
+        await updateMetricsWithCache(metrics);
+        alert('Failed to update metric. Please try again.');
+      }
+    } else {
+      // Queue for later
+      await offlineQueue.add(OP_TYPES.INCREMENT, metricId);
     }
   };
 
@@ -148,32 +255,50 @@ export default function App() {
   };
 
   const handleSaveEdit = async (updatedMetric) => {
-    try {
-      await metricsApi.update(updatedMetric.id, updatedMetric);
+    const previousMetrics = metrics;
+    const updatedMetrics = metrics.map(metric =>
+      metric.id === updatedMetric.id ? updatedMetric : metric
+    );
+    await updateMetricsWithCache(updatedMetrics);
+    setEditingMetric(null);
 
-      setMetrics(metrics.map(metric =>
-        metric.id === updatedMetric.id ? updatedMetric : metric
-      ));
-      setEditingMetric(null);
-    } catch (error) {
-      console.error('Failed to update metric:', error);
-      alert('Failed to save changes. Please try again.');
+    if (isOnline) {
+      try {
+        await metricsApi.update(updatedMetric.id, updatedMetric);
+      } catch (error) {
+        console.error('Failed to update metric:', error);
+        // Revert on error
+        await updateMetricsWithCache(previousMetrics);
+        alert('Failed to save changes. Please try again.');
+      }
+    } else {
+      // Queue for later
+      await offlineQueue.add(OP_TYPES.UPDATE, updatedMetric.id, updatedMetric);
     }
   };
 
   const handleArchiveMetric = async (metricId) => {
-    try {
-      await metricsApi.archive(metricId);
+    const previousMetrics = metrics;
+    const updatedMetrics = metrics.map(metric =>
+      metric.id === metricId
+        ? { ...metric, archived: true }
+        : metric
+    );
+    await updateMetricsWithCache(updatedMetrics);
+    setEditingMetric(null);
 
-      setMetrics(metrics.map(metric =>
-        metric.id === metricId
-          ? { ...metric, archived: true }
-          : metric
-      ));
-      setEditingMetric(null);
-    } catch (error) {
-      console.error('Failed to archive metric:', error);
-      alert('Failed to archive metric. Please try again.');
+    if (isOnline) {
+      try {
+        await metricsApi.archive(metricId);
+      } catch (error) {
+        console.error('Failed to archive metric:', error);
+        // Revert on error
+        await updateMetricsWithCache(previousMetrics);
+        alert('Failed to archive metric. Please try again.');
+      }
+    } else {
+      // Queue for later
+      await offlineQueue.add(OP_TYPES.ARCHIVE, metricId);
     }
   };
 
@@ -196,39 +321,38 @@ export default function App() {
       return;
     }
 
-    try {
-      // Calculate elapsed time
-      const elapsedMs = Date.now() - activeTimer.startTime;
-      const completeMinutes = Math.floor(elapsedMs / 60000);
+    // Calculate elapsed time
+    const elapsedMs = Date.now() - activeTimer.startTime;
+    const completeMinutes = Math.floor(elapsedMs / 60000);
 
-      // Clear timer state
-      setActiveTimer(null);
+    // Clear timer state
+    setActiveTimer(null);
 
-      // Only update API if at least 1 minute elapsed
-      if (completeMinutes > 0) {
-        const metric = metrics.find(m => m.id === metricId);
-        const newValue = metric.currentValue + completeMinutes;
+    // Only update if at least 1 minute elapsed
+    if (completeMinutes > 0) {
+      const metric = metrics.find(m => m.id === metricId);
+      const newValue = metric.currentValue + completeMinutes;
+      const updatedMetric = { ...metric, currentValue: newValue };
 
-        // Optimistic update
-        setMetrics(metrics.map(m =>
-          m.id === metricId
-            ? { ...m, currentValue: newValue }
-            : m
-        ));
+      // Optimistic update with cache
+      const updatedMetrics = metrics.map(m =>
+        m.id === metricId ? updatedMetric : m
+      );
+      await updateMetricsWithCache(updatedMetrics);
 
-        // Update via API
-        await metricsApi.update(metricId, {
-          ...metric,
-          currentValue: newValue
-        });
+      console.log(`Logged ${completeMinutes} minutes`);
 
-        console.log(`Logged ${completeMinutes} minutes`);
+      if (isOnline) {
+        try {
+          await metricsApi.update(metricId, updatedMetric);
+        } catch (error) {
+          console.error('Failed to update metric:', error);
+          // Keep local changes, will sync later
+        }
+      } else {
+        // Queue for later
+        await offlineQueue.add(OP_TYPES.UPDATE, metricId, updatedMetric);
       }
-    } catch (error) {
-      console.error('Failed to update metric:', error);
-      // Reload metrics to get correct state
-      await loadMetrics();
-      alert('Failed to update metric. Please try again.');
     }
   };
 
@@ -240,33 +364,35 @@ export default function App() {
   const handleSaveCheckIn = async (value) => {
     if (!checkInMetric) return;
 
-    try {
-      // Update metric's current_value to the new rating
-      const updatedMetric = {
-        ...checkInMetric,
-        currentValue: value
-      };
+    const updatedMetric = {
+      ...checkInMetric,
+      currentValue: value
+    };
 
-      // Optimistic update
-      setMetrics(metrics.map(m =>
-        m.id === checkInMetric.id
-          ? { ...m, currentValue: value }
-          : m
-      ));
+    // Optimistic update with cache
+    const updatedMetrics = metrics.map(m =>
+      m.id === checkInMetric.id
+        ? { ...m, currentValue: value }
+        : m
+    );
+    await updateMetricsWithCache(updatedMetrics);
 
-      // Save to API
-      await metricsApi.update(checkInMetric.id, updatedMetric);
+    // Close modal
+    setShowCheckInModal(false);
+    setCheckInMetric(null);
 
-      // Close modal
-      setShowCheckInModal(false);
-      setCheckInMetric(null);
-
-      // Recalculate averages
-      await calculateCheckInAverages();
-    } catch (error) {
-      console.error('Failed to save check-in:', error);
-      await loadMetrics();
-      alert('Failed to save check-in. Please try again.');
+    if (isOnline) {
+      try {
+        await metricsApi.update(checkInMetric.id, updatedMetric);
+        // Recalculate averages
+        await calculateCheckInAverages();
+      } catch (error) {
+        console.error('Failed to save check-in:', error);
+        // Keep local changes, will sync later
+      }
+    } else {
+      // Queue for later
+      await offlineQueue.add(OP_TYPES.UPDATE, checkInMetric.id, updatedMetric);
     }
   };
 
@@ -391,7 +517,11 @@ export default function App() {
         <TouchableOpacity style={styles.navButton}>
           <Text style={styles.navIcon}>⚙️</Text>
         </TouchableOpacity>
-        <Text style={styles.navTitle}>TRACKER</Text>
+        <View style={styles.navCenter}>
+          <Text style={styles.navTitle}>TRACKER</Text>
+          {!isOnline && <Text style={styles.offlineIndicator}>OFFLINE</Text>}
+          {isSyncing && <Text style={styles.syncingIndicator}>SYNCING...</Text>}
+        </View>
         <TouchableOpacity style={styles.navButton}>
           <Text style={styles.navDate}>{currentDateString}</Text>
         </TouchableOpacity>
@@ -465,11 +595,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 1,
   },
+  navCenter: {
+    alignItems: 'center',
+  },
   navTitle: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
     letterSpacing: 1,
+  },
+  offlineIndicator: {
+    color: '#FFE4B5',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  syncingIndicator: {
+    color: '#90EE90',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   centerContent: {
     justifyContent: 'center',
