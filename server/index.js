@@ -95,11 +95,14 @@ app.put('/api/metrics/:id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch metric' });
     }
     if (metric.current_value !== currentValue) {
-      const savedValue = metric.current_value || 0;
-      const editedValue = currentValue;
-      const diff = editedValue - savedValue;
-      if (diff !== 0) {
-        dbHelpers.logMetricEntry(id, diff, (err) => {
+      // For check-in metrics, log the actual value (rating)
+      // For other metrics, log the diff
+      const valueToLog = metric.type === 'checkin'
+        ? currentValue
+        : (currentValue - (metric.current_value || 0));
+
+      if (valueToLog !== 0 || metric.type === 'checkin') {
+        dbHelpers.logMetricEntry(id, valueToLog, (err) => {
           if (err) {
             console.error('Error logging metric entry:', err);
           }

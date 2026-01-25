@@ -420,8 +420,10 @@ export default function App() {
         });
 
         if (filteredLogs.length > 0) {
-          const sum = filteredLogs.reduce((acc, log) => acc + log.value, 0);
-          averages[metric.id] = (sum / filteredLogs.length).toFixed(1);
+          const sum = filteredLogs.reduce((acc, log) => acc + Number(log.value), 0);
+          const avg = sum / filteredLogs.length;
+          // Ensure average is valid and within expected range for check-ins (1-10)
+          averages[metric.id] = (avg > 0 && avg <= 10) ? avg.toFixed(1) : '-';
         } else {
           averages[metric.id] = '-';
         }
