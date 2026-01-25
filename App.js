@@ -32,42 +32,29 @@ export default function App() {
   const [hasCheckedResets, setHasCheckedResets] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const { isOnline, isInitialized } = useNetworkStatus();
-  const wasOnlineRef = useRef(isOnline);
-  const hasInitializedRef = useRef(false);
+  const wasOnlineRef = useRef(false);
 
-  // Initialize app: load from cache first, then sync if online
+  // Load from cache immediately on mount (don't wait for network status)
   useEffect(() => {
-    const initializeApp = async () => {
-      if (hasInitializedRef.current) return;
-      hasInitializedRef.current = true;
-
-      // Initialize offline queue
+    const loadFromCache = async () => {
       await offlineQueue.init();
-
-      // Load cached metrics first (instant UI)
       const cachedMetrics = await storage.loadMetrics();
+      console.log('Loaded from cache:', cachedMetrics?.length ?? 0, 'metrics');
       if (cachedMetrics && cachedMetrics.length > 0) {
         setMetrics(cachedMetrics);
-        setLoading(false);
       }
-
-      // If online, sync with server
-      if (isOnline) {
-        await syncWithServer();
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     };
 
-    if (isInitialized) {
-      initializeApp();
-    }
-  }, [isInitialized]);
+    loadFromCache();
+  }, []);
 
-  // When coming back online, process queue and sync
+  // Sync with server when network status is known and online
   useEffect(() => {
-    if (isInitialized && isOnline && !wasOnlineRef.current) {
-      console.log('Back online, syncing...');
+    if (!isInitialized) return;
+
+    if (isOnline && !wasOnlineRef.current) {
+      console.log('Online, syncing with server...');
       syncWithServer();
     }
     wasOnlineRef.current = isOnline;
@@ -117,10 +104,7 @@ export default function App() {
       await storage.saveMetrics(formattedMetrics);
     } catch (error) {
       console.error('Failed to load metrics:', error);
-      // Keep current metrics if we have them, otherwise empty
-      if (metrics.length === 0) {
-        setMetrics([]);
-      }
+      // Keep current metrics on error - don't overwrite with empty array
     } finally {
       setLoading(false);
     }
