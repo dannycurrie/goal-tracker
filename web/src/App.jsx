@@ -3,147 +3,150 @@ import './App.css'
 
 const API_BASE = 'https://goal-tracker-zeta-five.vercel.app/api'
 
+const DATE_RANGES = {
+  week: 'This Week',
+  month: 'This Month',
+  '90days': 'Last 90 Days',
+  year: 'This Year',
+  all: 'All Time',
+}
+
+function getDateRange(range) {
+  const now = new Date()
+  const today = now.toISOString().split('T')[0]
+  let from
+
+  switch (range) {
+    case 'week': {
+      const dayOfWeek = now.getDay()
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+      const monday = new Date(now)
+      monday.setDate(monday.getDate() - daysToMonday)
+      from = monday.toISOString().split('T')[0]
+      break
+    }
+    case 'month':
+      from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      break
+    case '90days': {
+      const past = new Date(now)
+      past.setDate(past.getDate() - 90)
+      from = past.toISOString().split('T')[0]
+      break
+    }
+    case 'year':
+      from = `${now.getFullYear()}-01-01`
+      break
+    case 'all':
+      from = '2000-01-01'
+      break
+    default:
+      from = today
+  }
+
+  return { from, to: today }
+}
+
 function App() {
   const [metrics, setMetrics] = useState([])
-  const [selectedMetric, setSelectedMetric] = useState('')
+  const [totals, setTotals] = useState({})
+  const [selectedRange, setSelectedRange] = useState('week')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  // Set default dates (current week)
+  // Update dates when range changes
   useEffect(() => {
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    const monday = new Date(now)
-    monday.setDate(monday.getDate() - daysToMonday)
+    const { from, to } = getDateRange(selectedRange)
+    setDateFrom(from)
+    setDateTo(to)
+  }, [selectedRange])
 
-    setDateFrom(monday.toISOString().split('T')[0])
-    setDateTo(now.toISOString().split('T')[0])
+  // Fetch metrics on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/metrics`)
+      .then(res => res.json())
+      .then(data => setMetrics(data.metrics || []))
+      .catch(err => console.error('Failed to fetch metrics:', err))
   }, [])
 
-  // Fetch available metrics on mount
+  // Fetch totals when metrics or dates change
   useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/metrics`)
-        const data = await response.json()
-        setMetrics(data.metrics || [])
-        if (data.metrics?.length > 0) {
-          setSelectedMetric(data.metrics[0].id)
-        }
-      } catch (err) {
-        console.error('Failed to fetch metrics:', err)
-        setError('Failed to load metrics')
-      }
-    }
-    fetchMetrics()
-  }, [])
-
-  const fetchTotal = async () => {
-    if (!selectedMetric || !dateFrom || !dateTo) {
-      setError('Please select a metric and date range')
-      return
-    }
+    if (!metrics.length || !dateFrom || !dateTo) return
 
     setLoading(true)
-    setError(null)
-    setResult(null)
 
-    try {
-      const response = await fetch(
-        `${API_BASE}/metrics/${selectedMetric}/total?dateFrom=${dateFrom}&dateTo=${dateTo}`
+    Promise.all(
+      metrics.map(metric =>
+        fetch(`${API_BASE}/metrics/${metric.id}/total?dateFrom=${dateFrom}&dateTo=${dateTo}`)
+          .then(res => res.json())
+          .then(data => ({ id: metric.id, ...data }))
+          .catch(() => ({ id: metric.id, value: null, count: 0 }))
       )
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch total')
-      }
-
-      const data = await response.json()
-      setResult(data)
-    } catch (err) {
-      console.error('Failed to fetch total:', err)
-      setError(err.message)
-    } finally {
+    ).then(results => {
+      const totalsMap = {}
+      results.forEach(r => { totalsMap[r.id] = r })
+      setTotals(totalsMap)
       setLoading(false)
-    }
-  }
+    })
+  }, [metrics, dateFrom, dateTo])
 
   return (
     <div className="app">
-      <h1>Metrics Dashboard</h1>
-
-      <div className="controls">
-        <div className="field">
-          <label htmlFor="metric">Metric</label>
-          <select
-            id="metric"
-            value={selectedMetric}
-            onChange={(e) => setSelectedMetric(e.target.value)}
-          >
-            {metrics.map((metric) => (
-              <option key={metric.id} value={metric.id}>
-                {metric.icon} {metric.title}
-              </option>
+      <header>
+        <h1>Metrics</h1>
+        <div className="date-controls">
+          <div className="range-buttons">
+            {Object.entries(DATE_RANGES).map(([key, label]) => (
+              <button
+                key={key}
+                className={selectedRange === key ? 'active' : ''}
+                onClick={() => setSelectedRange(key)}
+              >
+                {label}
+              </button>
             ))}
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="dateFrom">From</label>
-          <input
-            id="dateFrom"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="dateTo">To</label>
-          <input
-            id="dateTo"
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-        </div>
-
-        <button onClick={fetchTotal} disabled={loading}>
-          {loading ? 'Loading...' : 'Get Total'}
-        </button>
-      </div>
-
-      {error && <div className="error">{error}</div>}
-
-      {result && (
-        <div className="result">
-          <h2>{result.title}</h2>
-          <div className="result-grid">
-            <div className="result-item">
-              <span className="label">Type</span>
-              <span className="value">{result.type}</span>
-            </div>
-            <div className="result-item">
-              <span className="label">{result.type === 'checkin' ? 'Average' : 'Total'}</span>
-              <span className="value highlight">
-                {result.value !== null ? result.value : '-'}
-              </span>
-            </div>
-            <div className="result-item">
-              <span className="label">Entries</span>
-              <span className="value">{result.count}</span>
-            </div>
-            <div className="result-item">
-              <span className="label">Period</span>
-              <span className="value">
-                {new Date(result.dateFrom).toLocaleDateString()} - {new Date(result.dateTo).toLocaleDateString()}
-              </span>
-            </div>
           </div>
+          <div className="date-range">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => {
+                setDateFrom(e.target.value)
+                setSelectedRange(null)
+              }}
+            />
+            <span>to</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => {
+                setDateTo(e.target.value)
+                setSelectedRange(null)
+              }}
+            />
+          </div>
+        </div>
+      </header>
+
+      {loading ? (
+        <div className="loading">Loading...</div>
+      ) : (
+        <div className="metrics-grid">
+          {metrics.map(metric => {
+            const total = totals[metric.id]
+            const displayValue = total?.value !== null ? total?.value : '-'
+            const label = metric.type === 'checkin' ? 'avg' : metric.unit
+
+            return (
+              <div key={metric.id} className="metric-card">
+                <div className="metric-icon">{metric.icon}</div>
+                <div className="metric-value">{displayValue}</div>
+                <div className="metric-label">{label}</div>
+                <div className="metric-title">{metric.title}</div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
