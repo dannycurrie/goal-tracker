@@ -264,6 +264,7 @@ const dbHelpers = {
 
       const startDate = new Date(dateFrom);
       const endDate = new Date(dateTo);
+      endDate.setHours(23, 59, 59, 999);
 
       // Validate dates
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {

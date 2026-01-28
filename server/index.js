@@ -193,8 +193,6 @@ app.get('/api/metrics/:id/logs', (req, res) => {
 app.get('/api/metrics/:id/total', (req, res) => {
   const { id } = req.params;
   const { dateFrom, dateTo } = req.query;
-  console.log('dateFrom', dateFrom);
-  console.log('dateTo', dateTo);
 
   if (!dateFrom || !dateTo) {
     return res.status(400).json({ error: 'Missing required query parameters: dateFrom and dateTo' });
