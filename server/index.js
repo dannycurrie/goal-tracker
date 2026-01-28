@@ -188,6 +188,33 @@ app.get('/api/metrics/:id/logs', (req, res) => {
   });
 });
 
+// Get metric total/average for a given date range
+// Returns total for cumulative/timed metrics, average for checkin metrics
+app.get('/api/metrics/:id/total', (req, res) => {
+  const { id } = req.params;
+  const { dateFrom, dateTo } = req.query;
+  console.log('dateFrom', dateFrom);
+  console.log('dateTo', dateTo);
+
+  if (!dateFrom || !dateTo) {
+    return res.status(400).json({ error: 'Missing required query parameters: dateFrom and dateTo' });
+  }
+
+  dbHelpers.getMetricTotal(id, dateFrom, dateTo, (err, result) => {
+    if (err) {
+      console.error('Error fetching metric total:', err);
+      if (err.message === 'Metric not found') {
+        return res.status(404).json({ error: 'Metric not found' });
+      }
+      if (err.message === 'Invalid date format') {
+        return res.status(400).json({ error: 'Invalid date format. Use ISO 8601 format (e.g., 2026-01-20)' });
+      }
+      return res.status(500).json({ error: 'Failed to fetch metric total' });
+    }
+    res.json(result);
+  });
+});
+
 // ===== SYNC ENDPOINT =====
 
 // Sync all metrics from the app

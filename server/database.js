@@ -244,6 +244,89 @@ const dbHelpers = {
     } catch (error) {
       callback(error);
     }
+  },
+
+  // Get metric total/average for a given date range
+  getMetricTotal: async (metricId, dateFrom, dateTo, callback) => {
+    try {
+      // First get the metric to determine its type
+      const { data: metric, error: metricError } = await supabase
+        .from('metrics')
+        .select('*')
+        .eq('id', metricId)
+        .single();
+
+      if (metricError) throw metricError;
+      if (!metric) {
+        callback(new Error('Metric not found'));
+        return;
+      }
+
+      const startDate = new Date(dateFrom);
+      const endDate = new Date(dateTo);
+
+      // Validate dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        callback(new Error('Invalid date format'));
+        return;
+      }
+
+      // Fetch logs within the date range
+      const { data: logs, error: logsError } = await supabase
+        .from('metric_logs')
+        .select('*')
+        .eq('metric_id', metricId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (logsError) throw logsError;
+
+      let result;
+
+      if (metric.type === 'checkin') {
+        // For check-in metrics, calculate average
+        if (logs.length === 0) {
+          result = {
+            metricId: metric.id,
+            title: metric.title,
+            type: metric.type,
+            value: null,
+            count: 0,
+            dateFrom: startDate.toISOString(),
+            dateTo: endDate.toISOString()
+          };
+        } else {
+          const sum = logs.reduce((acc, log) => acc + Number(log.value), 0);
+          const average = sum / logs.length;
+          result = {
+            metricId: metric.id,
+            title: metric.title,
+            type: metric.type,
+            value: Math.round(average * 100) / 100, // Round to 2 decimal places
+            count: logs.length,
+            dateFrom: startDate.toISOString(),
+            dateTo: endDate.toISOString()
+          };
+        }
+      } else {
+        // For cumulative and timed metrics, calculate total
+        const total = logs.reduce((acc, log) => acc + Number(log.value), 0);
+        result = {
+          metricId: metric.id,
+          title: metric.title,
+          type: metric.type,
+          value: total,
+          count: logs.length,
+          dateFrom: startDate.toISOString(),
+          dateTo: endDate.toISOString()
+        };
+      }
+
+      callback(null, result);
+    } catch (error) {
+      callback(error);
+    }
   }
 };
 
