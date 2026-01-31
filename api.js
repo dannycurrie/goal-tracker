@@ -98,6 +98,17 @@ export const metricsApi = {
     }
   },
 
+  // Log a new entry with optional externalId for deduplication
+  logEntry: async (id, { value, externalId }) => {
+    try {
+      const response = await api.post(`/metrics/${id}/log`, { value, externalId });
+      return response.data;
+    } catch (error) {
+      console.error('Error logging metric entry:', error);
+      throw error;
+    }
+  },
+
   // Sync all metrics
   sync: async (metrics) => {
     try {

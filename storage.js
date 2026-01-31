@@ -4,6 +4,7 @@ const KEYS = {
   METRICS: '@goal_tracker_metrics',
   OFFLINE_QUEUE: '@goal_tracker_offline_queue',
   LAST_SYNC: '@goal_tracker_last_sync',
+  LAST_HEALTH_SYNC: '@goal_tracker_last_health_sync',
 };
 
 export const storage = {
@@ -59,6 +60,24 @@ export const storage = {
       return await AsyncStorage.getItem(KEYS.LAST_SYNC);
     } catch (error) {
       console.error('Failed to get last sync time:', error);
+      return null;
+    }
+  },
+
+  // Health Sync Time
+  setLastHealthSyncTime: async () => {
+    try {
+      await AsyncStorage.setItem(KEYS.LAST_HEALTH_SYNC, new Date().toISOString());
+    } catch (error) {
+      console.error('Failed to save last health sync time:', error);
+    }
+  },
+
+  getLastHealthSyncTime: async () => {
+    try {
+      return await AsyncStorage.getItem(KEYS.LAST_HEALTH_SYNC);
+    } catch (error) {
+      console.error('Failed to get last health sync time:', error);
       return null;
     }
   },

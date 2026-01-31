@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal, KeyboardAvoidingView, Platform } from 'react-native';
-import Slider from '@react-native-community/slider';
 
 const CheckInModal = ({ visible, metric, onClose, onSave }) => {
   const [value, setValue] = useState(3); // Default to middle value
@@ -25,27 +24,29 @@ const CheckInModal = ({ visible, metric, onClose, onSave }) => {
           <Text style={styles.modalTitle}>CHECK IN: {metric?.title}</Text>
           <Text style={styles.emoji}>{metric?.icon}</Text>
 
-          <View style={styles.sliderContainer}>
+          <View style={styles.ratingContainer}>
             <Text style={styles.valueDisplay}>{value}</Text>
 
-            <Slider
-              style={styles.slider}
-              minimumValue={1}
-              maximumValue={5}
-              step={1}
-              value={value}
-              onValueChange={setValue}
-              minimumTrackTintColor="#FF7F5C"
-              maximumTrackTintColor="#E0E0E0"
-              thumbTintColor="#FF7F5C"
-            />
-
-            <View style={styles.labels}>
-              <Text style={styles.labelText}>1</Text>
-              <Text style={styles.labelText}>2</Text>
-              <Text style={styles.labelText}>3</Text>
-              <Text style={styles.labelText}>4</Text>
-              <Text style={styles.labelText}>5</Text>
+            <View style={styles.buttonsRow}>
+              {[1, 2, 3, 4, 5].map((num) => (
+                <TouchableOpacity
+                  key={num}
+                  style={[
+                    styles.ratingButton,
+                    value === num && styles.ratingButtonActive,
+                  ]}
+                  onPress={() => setValue(num)}
+                >
+                  <Text
+                    style={[
+                      styles.ratingButtonText,
+                      value === num && styles.ratingButtonTextActive,
+                    ]}
+                  >
+                    {num}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 30,
   },
-  sliderContainer: {
+  ratingContainer: {
     marginBottom: 40,
   },
   valueDisplay: {
@@ -99,20 +100,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  labels: {
+  buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
-    marginTop: 10,
   },
-  labelText: {
-    fontSize: 14,
-    color: '#999',
+  ratingButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ratingButtonActive: {
+    backgroundColor: '#FF7F5C',
+  },
+  ratingButtonText: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#999',
+  },
+  ratingButtonTextActive: {
+    color: '#FFFFFF',
   },
   modalButtons: {
     flexDirection: 'row',

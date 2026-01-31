@@ -53,7 +53,7 @@ app.get('/api/metrics/:id', (req, res) => {
 
 // Create a new metric
 app.post('/api/metrics', (req, res) => {
-  const { title, icon, unit, timeframe, goal, currentValue, type } = req.body;
+  const { title, icon, unit, timeframe, goal, currentValue, type, source } = req.body;
 
   // Validation
   if (!title || !icon || !unit || !timeframe) {
@@ -102,7 +102,7 @@ app.put('/api/metrics/:id', async (req, res) => {
         : (currentValue - (metric.current_value || 0));
 
       if (valueToLog !== 0 || metric.type === 'checkin') {
-        dbHelpers.logMetricEntry(id, valueToLog, (err) => {
+        dbHelpers.logMetricEntry(id, valueToLog, null, (err) => {
           if (err) {
             console.error('Error logging metric entry:', err);
           }
@@ -144,7 +144,7 @@ app.post('/api/metrics/:id/increment', (req, res) => {
     }
 
     // Also log the entry
-    dbHelpers.logMetricEntry(id, 1, (logErr) => {
+    dbHelpers.logMetricEntry(id, 1, null, (logErr) => {
       if (logErr) {
         console.error('Error logging metric entry:', logErr);
       }
@@ -185,6 +185,67 @@ app.get('/api/metrics/:id/logs', (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch metric logs' });
     }
     res.json({ logs });
+  });
+});
+
+// Log a new entry for a metric (with optional externalId for deduplication)
+app.post('/api/metrics/:id/log', (req, res) => {
+  const { id } = req.params;
+  const { value, externalId } = req.body;
+
+  if (value === undefined) {
+    return res.status(400).json({ error: 'Missing required field: value' });
+  }
+
+  // Get current metric to update its value
+  dbHelpers.getMetricById(id, (err, metric) => {
+    if (err) {
+      console.error('Error fetching metric:', err);
+      return res.status(500).json({ error: 'Failed to fetch metric' });
+    }
+    if (!metric) {
+      return res.status(404).json({ error: 'Metric not found' });
+    }
+
+    // Log the entry (with optional externalId)
+    dbHelpers.logMetricEntry(id, value, externalId, (logErr, logResult) => {
+      if (logErr) {
+        console.error('Error logging metric entry:', logErr);
+        return res.status(500).json({ error: 'Failed to log metric entry' });
+      }
+
+      // If duplicate, return success but indicate no change
+      if (logResult.duplicate) {
+        return res.json({
+          message: 'Entry already exists (duplicate externalId)',
+          duplicate: true,
+          logId: logResult.id
+        });
+      }
+
+      // Update the metric's current value
+      const newValue = Math.round(((metric.current_value || 0) + value) * 100) / 100;
+      dbHelpers.updateMetric(id, {
+        title: metric.title,
+        icon: metric.icon,
+        unit: metric.unit,
+        timeframe: metric.timeframe,
+        goal: metric.goal,
+        currentValue: newValue,
+        type: metric.type
+      }, (updateErr) => {
+        if (updateErr) {
+          console.error('Error updating metric value:', updateErr);
+          // Log was created but value update failed - still return success
+        }
+
+        res.status(201).json({
+          message: 'Entry logged successfully',
+          log: logResult,
+          newValue: newValue
+        });
+      });
+    });
   });
 });
 

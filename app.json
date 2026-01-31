@@ -6,7 +6,16 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "plugins": [
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "This app needs access to your workout data to track your running distance.",
+          "healthUpdatePermission": "This app needs access to update your health data."
+        }
+      ]
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

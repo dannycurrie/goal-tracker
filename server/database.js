@@ -51,7 +51,7 @@ const dbHelpers = {
   // Create a new metric
   createMetric: async (metric, callback) => {
     try {
-      const { title, icon, unit, timeframe, goal, currentValue = 0, type = 'cumulative' } = metric;
+      const { title, icon, unit, timeframe, goal, currentValue = 0, type = 'cumulative', source = 'user' } = metric;
 
       const { data, error } = await supabase
         .from('metrics')
@@ -63,6 +63,7 @@ const dbHelpers = {
           goal,
           current_value: currentValue,
           type,
+          source,
           archived: false
         }])
         .select()
@@ -80,6 +81,7 @@ const dbHelpers = {
         goal: data.goal,
         currentValue: data.current_value,
         type: data.type,
+        source: data.source,
         archived: data.archived,
         lastReset: data.last_reset,
         createdAt: data.created_at,
@@ -174,14 +176,38 @@ const dbHelpers = {
   },
 
   // Log a metric entry
-  logMetricEntry: async (metricId, value, callback) => {
+  // externalId can be null, or a string like "HK:uuid" for Apple Health deduplication
+  logMetricEntry: async (metricId, value, externalId, callback) => {
     try {
+      // If externalId is provided, check for duplicates first
+      if (externalId) {
+        const { data: existing, error: checkError } = await supabase
+          .from('metric_logs')
+          .select('id')
+          .eq('metric_id', metricId)
+          .eq('external_id', externalId)
+          .maybeSingle();
+
+        if (checkError) throw checkError;
+
+        // Skip if this external_id already exists for this metric
+        if (existing) {
+          callback(null, { duplicate: true, id: existing.id });
+          return;
+        }
+      }
+
+      const insertData = {
+        metric_id: metricId,
+        value: value
+      };
+      if (externalId) {
+        insertData.external_id = externalId;
+      }
+
       const { data, error } = await supabase
         .from('metric_logs')
-        .insert([{
-          metric_id: metricId,
-          value: value
-        }])
+        .insert([insertData])
         .select()
         .single();
 
@@ -191,6 +217,7 @@ const dbHelpers = {
         id: data.id,
         metricId: data.metric_id,
         value: data.value,
+        externalId: data.external_id,
         createdAt: data.created_at
       };
 
@@ -216,6 +243,7 @@ const dbHelpers = {
         id: log.id,
         metricId: log.metric_id,
         value: log.value,
+        externalId: log.external_id,
         createdAt: log.created_at
       }));
 
