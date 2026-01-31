@@ -80,42 +80,48 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Metric Type</Text>
-              <View style={styles.typeDisplay}>
-                <Text style={styles.typeValue}>
-                  {metric?.type === 'timed' ? 'TIMED' :
-                   metric?.type === 'checkin' ? 'CHECK-IN' : 'CUMULATIVE'}
-                </Text>
-                <Text style={styles.typeHint}>
-                  {metric?.type === 'timed' ? 'Tracks time duration' :
-                   metric?.type === 'checkin' ? 'Collects 1-5 ratings' : 'Tracks count increments'}
-                </Text>
+            {metric?.source !== 'apple_health' && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Metric Type</Text>
+                <View style={styles.typeDisplay}>
+                  <Text style={styles.typeValue}>
+                    {metric?.type === 'timed' ? 'TIMED' :
+                     metric?.type === 'checkin' ? 'CHECK-IN' : 'CUMULATIVE'}
+                  </Text>
+                  <Text style={styles.typeHint}>
+                    {metric?.type === 'timed' ? 'Tracks time duration' :
+                     metric?.type === 'checkin' ? 'Collects 1-5 ratings' : 'Tracks count increments'}
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Unit</Text>
-              <TextInput
-                style={styles.input}
-                value={unit}
-                onChangeText={setUnit}
-                placeholder="e.g., KMs, Pages, Minutes"
-                placeholderTextColor="#999"
-              />
-            </View>
+            {metric?.source !== 'apple_health' && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Unit</Text>
+                <TextInput
+                  style={styles.input}
+                  value={unit}
+                  onChangeText={setUnit}
+                  placeholder="e.g., KMs, Pages, Minutes"
+                  placeholderTextColor="#999"
+                />
+              </View>
+            )}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Current Value</Text>
-              <TextInput
-                style={styles.input}
-                value={currentValue}
-                onChangeText={setCurrentValue}
-                placeholder="e.g., 5"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </View>
+            {metric?.source !== 'apple_health' && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Current Value</Text>
+                <TextInput
+                  style={styles.input}
+                  value={currentValue}
+                  onChangeText={setCurrentValue}
+                  placeholder="e.g., 5"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Timeframe</Text>

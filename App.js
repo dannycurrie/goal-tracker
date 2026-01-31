@@ -33,8 +33,6 @@ export default function App() {
   const [hasCheckedResets, setHasCheckedResets] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAppleHealthScreen, setShowAppleHealthScreen] = useState(false);
-  const [appleHealthLogs, setAppleHealthLogs] = useState([]);
-  const [isHealthSyncing, setIsHealthSyncing] = useState(false);
   const { isOnline, isInitialized } = useNetworkStatus();
   const wasOnlineRef = useRef(false);
 
@@ -86,37 +84,6 @@ export default function App() {
       console.error('Sync failed:', error);
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  // Function to add distance (or any value) to a metric
-  // Takes optional metricsSource to avoid stale closure issues
-  const handleAddToMetric = async (metricId, valueToAdd, metricsSource = null) => {
-    const currentMetrics = metricsSource || metrics;
-    const metric = currentMetrics.find(m => m.id === metricId);
-    if (!metric) return;
-
-    const newValue = Math.round((metric.currentValue + valueToAdd) * 100) / 100;
-    const updatedMetric = { ...metric, currentValue: newValue };
-
-    // Optimistic update with cache
-    const updatedMetrics = currentMetrics.map(m =>
-      m.id === metricId ? updatedMetric : m
-    );
-    await updateMetricsWithCache(updatedMetrics);
-
-    console.log(`Added ${valueToAdd} to metric "${metric.title}" (new value: ${newValue})`);
-
-    if (isOnline) {
-      try {
-        await metricsApi.update(metricId, updatedMetric);
-      } catch (error) {
-        console.error('Failed to update metric:', error);
-        // Keep local changes, will sync later
-      }
-    } else {
-      // Queue for later
-      await offlineQueue.add(OP_TYPES.UPDATE, metricId, updatedMetric);
     }
   };
 
@@ -456,73 +423,6 @@ export default function App() {
     }
   };
 
-  // Apple Health screen handlers
-  const handleOpenAppleHealth = async () => {
-    setShowAppleHealthScreen(true);
-    // Load logs for the Apple Health metric
-    if (appleHealthMetric) {
-      try {
-        const logs = await metricsApi.getLogs(appleHealthMetric.id);
-        setAppleHealthLogs(logs);
-      } catch (error) {
-        console.error('Failed to load Apple Health logs:', error);
-      }
-    }
-  };
-
-  const handleAppleHealthSync = async () => {
-    if (!isOnline) {
-      alert('Cannot sync while offline');
-      return;
-    }
-
-    setIsHealthSyncing(true);
-    try {
-      const result = await syncRunningWorkouts(metrics);
-      if (result.synced) {
-        // Reload metrics and logs
-        const loadedMetrics = await loadMetrics();
-        if (loadedMetrics) {
-          const updatedHealthMetric = loadedMetrics.find(m => m.source === 'apple_health');
-          if (updatedHealthMetric) {
-            const logs = await metricsApi.getLogs(updatedHealthMetric.id);
-            setAppleHealthLogs(logs);
-          }
-        }
-        if (result.workoutsLogged > 0) {
-          alert(`Synced ${result.workoutsLogged} new workout(s)`);
-        } else {
-          alert('Already up to date');
-        }
-      }
-    } catch (error) {
-      console.error('Health sync failed:', error);
-      alert('Sync failed. Please try again.');
-    } finally {
-      setIsHealthSyncing(false);
-    }
-  };
-
-  const handleAppleHealthSaveEdit = async (updatedMetric) => {
-    const previousMetrics = metrics;
-    const updatedMetrics = metrics.map(metric =>
-      metric.id === updatedMetric.id ? updatedMetric : metric
-    );
-    await updateMetricsWithCache(updatedMetrics);
-
-    if (isOnline) {
-      try {
-        await metricsApi.update(updatedMetric.id, updatedMetric);
-      } catch (error) {
-        console.error('Failed to update Apple Health metric:', error);
-        await updateMetricsWithCache(previousMetrics);
-        alert('Failed to save changes. Please try again.');
-      }
-    } else {
-      await offlineQueue.add(OP_TYPES.UPDATE, updatedMetric.id, updatedMetric);
-    }
-  };
-
   const calculateCheckInAverages = async () => {
     const checkinMetrics = metrics.filter(m => m.type === 'checkin');
     const averages = {};
@@ -628,7 +528,7 @@ export default function App() {
         </View>
       </ScrollView>
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navButton} onPress={handleOpenAppleHealth}>
+        <TouchableOpacity style={styles.navButton} onPress={() => setShowAppleHealthScreen(true)}>
           <Text style={styles.navIcon}>⚙️</Text>
         </TouchableOpacity>
         <View style={styles.navCenter}>
@@ -669,10 +569,10 @@ export default function App() {
         visible={showAppleHealthScreen}
         onClose={() => setShowAppleHealthScreen(false)}
         metric={appleHealthMetric}
-        logs={appleHealthLogs}
-        onSync={handleAppleHealthSync}
-        onSaveEdit={handleAppleHealthSaveEdit}
-        isSyncing={isHealthSyncing}
+        onEdit={(metric) => {
+          setShowAppleHealthScreen(false);
+          setEditingMetric(metric);
+        }}
       />
     </View>
   );
