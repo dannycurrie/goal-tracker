@@ -1,7 +1,9 @@
 import axios from 'axios';
+const prodURL = 'https://goal-tracker-zeta-five.vercel.app/api';
+const devURL = 'http://localhost:3000/api';
 
 const api = axios.create({
-  baseURL: 'https://goal-tracker-zeta-five.vercel.app/api',
+  baseURL: prodURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -66,9 +68,9 @@ export const metricsApi = {
   },
 
   // Increment metric value
-  increment: async (id) => {
+  increment: async (id, value = 1) => {
     try {
-      const response = await api.post(`/metrics/${id}/increment`);
+      const response = await api.post(`/metrics/${id}/increment`, { value });
       return response.data.metric;
     } catch (error) {
       console.error('Error incrementing metric:', error);
@@ -94,17 +96,6 @@ export const metricsApi = {
       return response.data.logs;
     } catch (error) {
       console.error('Error fetching metric logs:', error);
-      throw error;
-    }
-  },
-
-  // Log a new entry with optional externalId for deduplication
-  logEntry: async (id, { value, externalId }) => {
-    try {
-      const response = await api.post(`/metrics/${id}/log`, { value, externalId });
-      return response.data;
-    } catch (error) {
-      console.error('Error logging metric entry:', error);
       throw error;
     }
   },

@@ -3,7 +3,43 @@ import AppleHealthKit from 'react-native-health';
 import { storage } from './storage';
 import { metricsApi } from './api';
 
-const RUNNING_METRIC_NAME = 'KM';
+const mockMetricsApi = {
+  increment: (id, value) => {
+    console.log(`Mock incrementing metric ${id} with value ${value}`);
+    return Promise.resolve({ id, value });
+  }  
+};
+
+const mockStorage = {
+  getLastHealthSyncTime: () => Promise.resolve(new Date('2026-01-01T00:00:00Z')),
+  setLastHealthSyncTime: () => Promise.resolve(),
+};
+
+const mockGetRunningWorkouts = () => {
+  return Promise.resolve([
+    { start: '2026-01-28T20:02:25.950+0000',
+      calories: 337.25721945316656,
+      activityId: 37,
+      metadata: 
+      { HKElevationAscended: null,
+        HKTimeZone: 'Europe/London',
+        HKIndoorWorkout: 0,
+        HKAverageMETs: null },
+        id: '0C79FEEE-F999-4691-8F1D-F973E4AB93EA',
+        end: '2026-01-28T21:00:45.687+0000',
+        tracked: true,
+        sourceName: 'Danny’s Apple Watch',
+        sourceId: 'com.apple.health.AE3522E6-AF74-4D08-BD51-616C1518FE72',
+        activityName: 'Running',
+        distance: 2.8888971234048606,
+        device: 'Watch6,15' }
+      ]);
+    };
+    
+// const storage = mockStorage;
+// const metricsApi = mockMetricsApi;
+
+const RUNNING_METRIC_ID = 32;
 
 // HealthKit permissions needed for reading workout data
 const healthKitPermissions = {
@@ -11,6 +47,9 @@ const healthKitPermissions = {
     read: [
       AppleHealthKit.Constants.Permissions.Workout,
       AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
+      AppleHealthKit.Constants.Permissions.MindfulSession,
+      AppleHealthKit.Constants.Permissions.vo2MaxTest,
+      AppleHealthKit.Constants.Permissions.Steps,
     ],
   },
 };
@@ -46,6 +85,7 @@ export const initHealthKit = () => {
  * @returns {Promise<Array>} Array of workout objects with distance in meters
  */
 export const getRunningWorkouts = (startDate, endDate = new Date()) => {
+  // return mockGetRunningWorkouts();
   return new Promise((resolve, reject) => {
     if (Platform.OS !== 'ios') {
       resolve([]);
@@ -82,7 +122,7 @@ export const getRunningWorkouts = (startDate, endDate = new Date()) => {
  * @returns {Object|null} The KM metric with source='apple_health' or null if not found
  */
 export const findRunningMetric = (metrics) => {
-  return metrics?.find((m) => m.title === RUNNING_METRIC_NAME && m.source === 'apple_health') || null;
+  return metrics?.find((m) => m.id === RUNNING_METRIC_ID && m.source === 'apple_health') || null;
 };
 
 /**
@@ -108,7 +148,7 @@ export const syncRunningWorkouts = async (metrics) => {
 
   // 3. Determine the start date for the query
   // Use lastHealthSyncTime if available, otherwise use lastReset
-  const lastHealthSync = await storage.getLastHealthSyncTime();
+  const lastHealthSync =  await storage.getLastHealthSyncTime();
   let startDate;
 
   if (lastHealthSync) {
@@ -145,9 +185,8 @@ export const syncRunningWorkouts = async (metrics) => {
         continue;
       }
 
-      const externalId = `HK:${workoutId}`;
-      const distanceMeters = workout.distance || 0;
-      const distanceKm = Math.round((distanceMeters / 1000) * 100) / 100;
+      const distanceMiles = workout.distance || 0;
+      const distanceKm = Math.round(distanceMiles * 1.60934);
 
       if (distanceKm <= 0) {
         console.log(`Workout ${workoutId} has no distance, skipping`);
@@ -155,18 +194,10 @@ export const syncRunningWorkouts = async (metrics) => {
       }
 
       try {
-        const result = await metricsApi.logEntry(runningMetric.id, {
-          value: distanceKm,
-          externalId: externalId
-        });
-
-        if (result.duplicate) {
-          console.log(`Workout ${workoutId} already logged (duplicate)`);
-        } else {
-          console.log(`Logged workout ${workoutId}: ${distanceKm} km`);
-          workoutsLogged++;
-          totalDistanceKm += distanceKm;
-        }
+        await metricsApi.increment(runningMetric.id, distanceKm);
+        console.log(`Logged workout ${workoutId}: ${distanceKm} km`);
+        workoutsLogged++;
+        totalDistanceKm += distanceKm;
       } catch (error) {
         console.error(`Failed to log workout ${workoutId}:`, error);
         // Continue with other workouts

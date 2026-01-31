@@ -91,9 +91,8 @@ export default function App() {
   const syncHealthData = async (currentMetrics) => {
     try {
       const result = await syncRunningWorkouts(currentMetrics);
-      if (result.synced && result.workoutsLogged > 0) {
-        console.log(`Synced ${result.workoutsLogged} workouts (${result.distanceKm} km) from Apple Health`);
-        // Reload metrics to get updated values
+      if (result.synced) {
+        console.log('Health sync complete, reloading metrics');
         await loadMetrics();
       }
     } catch (error) {
