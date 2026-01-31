@@ -136,15 +136,16 @@ app.delete('/api/metrics/:id', (req, res) => {
 // Increment a metric's value
 app.post('/api/metrics/:id/increment', (req, res) => {
   const { id } = req.params;
+  const { value = 1 } = req.body || {};
 
-  dbHelpers.incrementMetric(id, (err) => {
+  dbHelpers.incrementMetric(id, value, (err) => {
     if (err) {
       console.error('Error incrementing metric:', err);
       return res.status(500).json({ error: 'Failed to increment metric' });
     }
 
     // Also log the entry
-    dbHelpers.logMetricEntry(id, 1, null, (logErr) => {
+    dbHelpers.logMetricEntry(id, value, null, (logErr) => {
       if (logErr) {
         console.error('Error logging metric entry:', logErr);
       }

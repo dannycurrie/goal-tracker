@@ -146,8 +146,8 @@ const dbHelpers = {
     }
   },
 
-  // Increment metric value
-  incrementMetric: async (id, callback) => {
+  // Increment metric value by a given amount (default 1)
+  incrementMetric: async (id, value, callback) => {
     try {
       // First get the current value
       const { data: metric, error: getError } = await supabase
@@ -162,7 +162,7 @@ const dbHelpers = {
       const { data, error } = await supabase
         .from('metrics')
         .update({
-          current_value: (metric.current_value || 0) + 1,
+          current_value: Math.round(((metric.current_value || 0) + value) * 100) / 100,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
