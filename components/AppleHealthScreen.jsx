@@ -11,29 +11,26 @@ import {
 const AppleHealthScreen = ({
   visible,
   onClose,
-  metric,
+  metrics = [],
   onEdit,
 }) => {
-  const lastTap = useRef(null);
+  const lastTapRef = useRef({});
 
-  // Calculate progress
-  const progress = metric?.goal > 0 ? Math.min(metric.currentValue / metric.goal, 1) : 0;
-  const progressPercent = Math.round(progress * 100);
-
-  const handlePress = () => {
+  const handlePress = (metric) => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;
+    const lastTap = lastTapRef.current[metric.id];
 
-    if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
+    if (lastTap && (now - lastTap) < DOUBLE_PRESS_DELAY) {
       // Double tap - edit
-      lastTap.current = null;
+      lastTapRef.current[metric.id] = null;
       if (onEdit) {
         onEdit(metric);
       }
     } else {
-      lastTap.current = now;
+      lastTapRef.current[metric.id] = now;
       setTimeout(() => {
-        lastTap.current = null;
+        lastTapRef.current[metric.id] = null;
       }, DOUBLE_PRESS_DELAY);
     }
   };
@@ -57,23 +54,31 @@ const AppleHealthScreen = ({
 
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           {/* Metric Display */}
-          {metric && (
-            <TouchableOpacity style={styles.metricSection} onPress={handlePress}>
-              <View style={styles.metricCircle}>
-                <View style={styles.iconContainer}>
-                  <Text style={styles.icon}>{metric.icon}</Text>
+          {metrics.map(metric => {
+            const progress = metric.goal > 0 ? Math.min(metric.currentValue / metric.goal, 1) : 0;
+            const progressPercent = Math.round(progress * 100);
+            return (
+              <TouchableOpacity
+                key={metric.id}
+                style={styles.metricSection}
+                onPress={() => handlePress(metric)}
+              >
+                <View style={styles.metricCircle}>
+                  <View style={styles.iconContainer}>
+                    <Text style={styles.icon}>{metric.icon}</Text>
+                  </View>
+                  <View style={styles.progressOverlay}>
+                    <Text style={styles.progressText}>{progressPercent}%</Text>
+                  </View>
                 </View>
-                <View style={styles.progressOverlay}>
-                  <Text style={styles.progressText}>{progressPercent}%</Text>
-                </View>
-              </View>
-              <Text style={styles.metricTitle}>{metric.title}</Text>
-              <Text style={styles.metricValue}>
-                {metric.currentValue?.toFixed(1) || 0} / {metric.goal} {metric.unit}
-              </Text>
-              <Text style={styles.metricTimeframe}>this {metric.timeframe}</Text>
-            </TouchableOpacity>
-          )}
+                <Text style={styles.metricTitle}>{metric.title}</Text>
+                <Text style={styles.metricValue}>
+                  {metric.currentValue || 0} / {metric.goal} {metric.unit}
+                </Text>
+                <Text style={styles.metricTimeframe}>this {metric.timeframe}</Text>
+              </TouchableOpacity>
+            );
+          })}
 
         </ScrollView>
       </View>

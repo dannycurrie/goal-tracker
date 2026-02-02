@@ -40,6 +40,7 @@ const mockGetRunningWorkouts = () => {
 // const metricsApi = mockMetricsApi;
 
 const RUNNING_METRIC_ID = 32;
+const MINDFUL_METRIC_ID = 33;
 
 // HealthKit permissions needed for reading workout data
 const healthKitPermissions = {
@@ -52,6 +53,12 @@ const healthKitPermissions = {
       AppleHealthKit.Constants.Permissions.Steps,
     ],
   },
+};
+
+const getMindfulMinutes = (session) => {
+  const { startDate, endDate } = session;
+  const duration = new Date(endDate).getTime() - new Date(startDate).getTime();
+  return Math.round(duration / (1000 * 60));
 };
 
 /**
@@ -117,6 +124,38 @@ export const getRunningWorkouts = (startDate, endDate = new Date()) => {
 };
 
 /**
+ * Get mindful sessions from HealthKit since a given date
+ * @param {Date} startDate - Start date for the query
+ * @param {Date} endDate - End date for the query (defaults to now)
+ * @returns {Promise<Array>} Array of mindful session objects
+ */
+export const getMindfulSessions = (startDate, endDate = new Date()) => {
+  return new Promise((resolve, reject) => {
+    if (Platform.OS !== 'ios') {
+      resolve([]);
+      return;
+    }
+
+    const options = {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
+
+    AppleHealthKit.getMindfulSession(options, (error, results) => {
+      if (error) {
+        console.log('Error fetching mindful sessions:', error);
+        reject(error);
+        return;
+      }
+      console.log('Mindful sessions:', results);
+
+      console.log(`Found ${(results || []).length} mindful sessions`);
+      resolve(results || []);
+    });
+  });
+};
+
+/**
  * Find the Apple Health "KM" metric in the metrics array
  * @param {Array} metrics - Array of metric objects
  * @returns {Object|null} The KM metric with source='apple_health' or null if not found
@@ -126,98 +165,98 @@ export const findRunningMetric = (metrics) => {
 };
 
 /**
- * Sync running workouts from HealthKit to the KM metric
- * Logs each workout individually with external_id for deduplication
- * @param {Array} metrics - Current metrics array
- * @returns {Promise<{synced: boolean, workoutsLogged: number, distanceKm: number}>}
+ * Find the Apple Health mindful minutes metric
+ * @param {Array} metrics - Array of metric objects
+ * @returns {Object|null} The mindful metric with source='apple_health' or null if not found
  */
-export const syncRunningWorkouts = async (metrics) => {
-  // 1. Check if Apple Health "KM" metric exists
-  const runningMetric = findRunningMetric(metrics);
-  if (!runningMetric) {
-    console.log('No Apple Health "KM" metric found, skipping health sync');
-    return { synced: false, workoutsLogged: 0, distanceKm: 0 };
-  }
+export const findMindfulMetric = (metrics) => {
+  return metrics?.find((m) => m.id === MINDFUL_METRIC_ID && m.source === 'apple_health') || null;
+};
 
-  // 2. Initialize HealthKit (requests permission if needed)
+/**
+ * Sync Apple Health data to metrics
+ * @param {Array} metrics - Current metrics array
+ * @returns {Promise<{synced: boolean, results: object}>}
+ */
+export const syncWorkouts = async (metrics) => {
+  // 1. Initialize HealthKit (requests permission if needed)
   const initialized = await initHealthKit();
   if (!initialized) {
     console.log('HealthKit not initialized or permission denied');
-    return { synced: false, workoutsLogged: 0, distanceKm: 0 };
+    return { synced: false, results: {} };
   }
 
-  // 3. Determine the start date for the query
-  // Use lastHealthSyncTime if available, otherwise use lastReset
-  const lastHealthSync =  await storage.getLastHealthSyncTime();
+  // 2. Determine the start date for the query
+  const lastHealthSync = await storage.getLastHealthSyncTime();
   let startDate;
 
   if (lastHealthSync) {
     startDate = new Date(lastHealthSync);
-  } else if (runningMetric.lastReset) {
-    startDate = new Date(runningMetric.lastReset);
   } else {
-    // Default to 30 days ago if no lastReset
+    // Default to 30 days ago
     startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
   }
 
-  console.log(`Querying workouts since: ${startDate.toISOString()}`);
+  console.log(`Querying health data since: ${startDate.toISOString()}`);
 
-  // 4. Query HealthKit for running workouts
-  try {
-    const workouts = await getRunningWorkouts(startDate, new Date());
+  const results = {
+    running: { logged: 0, total: 0 },
+    mindful: { logged: 0, total: 0 },
+  };
 
-    if (workouts.length === 0) {
-      console.log('No new running workouts found');
-      await storage.setLastHealthSyncTime();
-      return { synced: true, workoutsLogged: 0, distanceKm: 0 };
+  // 3. Sync running workouts
+  const runningMetric = findRunningMetric(metrics);
+  if (runningMetric) {
+    try {
+      const workouts = await getRunningWorkouts(startDate, new Date());
+      for (const workout of workouts) {
+        const distanceMiles = workout.distance || 0;
+        const distanceKm = Math.round(distanceMiles * 1.60934);
+        if (distanceKm > 0) {
+          await metricsApi.increment(runningMetric.id, distanceKm);
+          results.running.logged++;
+          results.running.total += distanceKm;
+        }
+      }
+      console.log(`Running: ${results.running.logged} workouts, ${results.running.total} km`);
+    } catch (error) {
+      console.error('Error syncing running:', error);
     }
-
-    // 5. Log each workout individually using the API
-    let workoutsLogged = 0;
-    let totalDistanceKm = 0;
-
-    for (const workout of workouts) {
-      // Get workout UUID for deduplication
-      const workoutId = workout.id || workout.uuid;
-      if (!workoutId) {
-        console.log('Workout missing ID, skipping:', workout);
-        continue;
-      }
-
-      const distanceMiles = workout.distance || 0;
-      const distanceKm = Math.round(distanceMiles * 1.60934);
-
-      if (distanceKm <= 0) {
-        console.log(`Workout ${workoutId} has no distance, skipping`);
-        continue;
-      }
-
-      try {
-        await metricsApi.increment(runningMetric.id, distanceKm);
-        console.log(`Logged workout ${workoutId}: ${distanceKm} km`);
-        workoutsLogged++;
-        totalDistanceKm += distanceKm;
-      } catch (error) {
-        console.error(`Failed to log workout ${workoutId}:`, error);
-        // Continue with other workouts
-      }
-    }
-
-    // 6. Update last health sync time
-    await storage.setLastHealthSyncTime();
-
-    console.log(`Health sync complete: ${workoutsLogged} new workouts, ${totalDistanceKm} km total`);
-    return { synced: true, workoutsLogged, distanceKm: totalDistanceKm };
-  } catch (error) {
-    console.error('Error syncing running workouts:', error);
-    return { synced: false, workoutsLogged: 0, distanceKm: 0 };
   }
+
+  // 4. Sync mindful sessions
+  const mindfulMetric = findMindfulMetric(metrics);
+  if (mindfulMetric) {
+    try {
+      const sessions = await getMindfulSessions(startDate, new Date());
+      for (const session of sessions) {
+        // Duration is in minutes
+        const minutes = getMindfulMinutes(session);
+        await metricsApi.increment(mindfulMetric.id, minutes);
+        results.mindful.logged++;
+        results.mindful.total += minutes;
+      }
+      console.log(`Mindful: ${results.mindful.logged} sessions, ${results.mindful.total} mins`);
+    } catch (error) {
+      console.error('Error syncing mindful sessions:', error);
+    }
+  }
+
+  // 5. Update last health sync time
+  await storage.setLastHealthSyncTime();
+
+  const totalLogged = results.running.logged + results.mindful.logged;
+  console.log(`Health sync complete: ${totalLogged} items synced`);
+
+  return { synced: true, workoutsLogged: totalLogged, distanceKm: results.running.total, results };
 };
 
 export default {
   initHealthKit,
   getRunningWorkouts,
+  getMindfulSessions,
   findRunningMetric,
-  syncRunningWorkouts,
+  findMindfulMetric,
+  syncWorkouts,
 };

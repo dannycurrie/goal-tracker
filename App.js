@@ -7,7 +7,7 @@ import { needsReset } from './components/utils';
 import { storage } from './storage';
 import { useNetworkStatus } from './networkStatus';
 import { offlineQueue, OP_TYPES } from './offlineQueue';
-import { syncRunningWorkouts } from './healthKit';
+import { syncWorkouts } from './healthKit';
 
 /**
    *
@@ -90,7 +90,7 @@ export default function App() {
   // Sync running workouts from Apple Health on startup
   const syncHealthData = async (currentMetrics) => {
     try {
-      const result = await syncRunningWorkouts(currentMetrics);
+      const result = await syncWorkouts(currentMetrics);
       if (result.synced) {
         console.log('Health sync complete, reloading metrics');
         await loadMetrics();
@@ -493,7 +493,7 @@ export default function App() {
   const activeMetrics = metrics.filter(m => !m.archived && m.source !== 'apple_health');
 
   // Get the Apple Health metric
-  const appleHealthMetric = metrics.find(m => m.source === 'apple_health' && !m.archived);
+  const appleHealthMetrics = metrics.filter(m => m.source === 'apple_health' && !m.archived);
 
   if (loading) {
     return (
@@ -528,7 +528,7 @@ export default function App() {
       </ScrollView>
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navButton} onPress={() => setShowAppleHealthScreen(true)}>
-          <Text style={styles.navIcon}>⚙️</Text>
+          <Text style={styles.navIcon}>🍎</Text>
         </TouchableOpacity>
         <View style={styles.navCenter}>
           <Text style={styles.navTitle}>TRACKER</Text>
@@ -567,7 +567,7 @@ export default function App() {
       <AppleHealthScreen
         visible={showAppleHealthScreen}
         onClose={() => setShowAppleHealthScreen(false)}
-        metric={appleHealthMetric}
+        metrics={appleHealthMetrics}
         onEdit={(metric) => {
           setShowAppleHealthScreen(false);
           setEditingMetric(metric);
