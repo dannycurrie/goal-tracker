@@ -115,6 +115,24 @@ h1 {
   color: #ff7f5c;
 }
 
+.metric-trend {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 4px 0;
+}
+
+.trend-up {
+  color: #4ade80;
+}
+
+.trend-down {
+  color: #f87171;
+}
+
+.trend-same {
+  color: #888;
+}
+
 .metric-label {
   font-size: 12px;
   color: #888;
