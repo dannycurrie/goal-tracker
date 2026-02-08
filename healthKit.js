@@ -42,6 +42,7 @@ const mockGetRunningWorkouts = () => {
 const RUNNING_METRIC_ID = 32;
 const MINDFUL_METRIC_ID = 33;
 const SLEEP_METRIC_ID = 38;
+const EARLY_RISE_METRIC_ID = 39;
 
 // HealthKit permissions needed for reading workout data
 const healthKitPermissions = {
@@ -182,6 +183,7 @@ export const getSleepSamples = (startDate, endDate = new Date()) => {
         return;
       }
       console.log(`Found ${(results || []).length} sleep samples`);
+      console.log(results);
       resolve(results || []);
     });
   });
@@ -217,6 +219,35 @@ const getSleepHoursPerNight = (samples) => {
 };
 
 /**
+ * Count how many nights the person got out of bed before 7am.
+ * Uses the latest endDate of any sleep sample (excluding AWAKE) per night
+ * as the wake-up time.
+ * @param {Array} samples - Raw sleep samples from HealthKit
+ * @returns {number} Number of days with wake-up before 7:00 AM
+ */
+const getEarlyRiseDays = (samples) => {
+  const sleepSamples = samples.filter(s => s.value !== 'AWAKE');
+
+  // Find the latest endDate per night (= when person got out of bed)
+  const nightMap = {};
+  for (const sample of sleepSamples) {
+    const endDate = new Date(sample.endDate);
+    const nightKey = endDate.toISOString().split('T')[0];
+    if (!nightMap[nightKey] || endDate > nightMap[nightKey]) {
+      nightMap[nightKey] = endDate;
+    }
+  }
+
+  let count = 0;
+  for (const wakeUpTime of Object.values(nightMap)) {
+    if (wakeUpTime.getHours() < 7) {
+      count++;
+    }
+  }
+  return count;
+};
+
+/**
  * Find the Apple Health "KM" metric in the metrics array
  * @param {Array} metrics - Array of metric objects
  * @returns {Object|null} The KM metric with source='apple_health' or null if not found
@@ -241,6 +272,15 @@ export const findMindfulMetric = (metrics) => {
  */
 export const findSleepMetric = (metrics) => {
   return metrics?.find((m) => m.id === SLEEP_METRIC_ID && m.source === 'apple_health') || null;
+};
+
+/**
+ * Find the Apple Health early rise metric
+ * @param {Array} metrics - Array of metric objects
+ * @returns {Object|null} The early rise metric with source='apple_health' or null if not found
+ */
+export const findEarlyRiseMetric = (metrics) => {
+  return metrics?.find((m) => m.id === EARLY_RISE_METRIC_ID && m.source === 'apple_health') || null;
 };
 
 /**
@@ -274,6 +314,7 @@ export const syncWorkouts = async (metrics) => {
     running: { logged: 0, total: 0 },
     mindful: { logged: 0, total: 0 },
     sleep: { nights: 0, avgHours: 0 },
+    earlyRise: { days: 0 },
   };
 
   // 3. Sync running workouts
@@ -314,35 +355,59 @@ export const syncWorkouts = async (metrics) => {
     }
   }
 
-  // 5. Sync sleep data - calculate monthly average from HealthKit
+  // 5. Sync sleep-based metrics (sleep average + early rise count)
   const sleepMetric = findSleepMetric(metrics);
-  if (sleepMetric) {
+  const earlyRiseMetric = findEarlyRiseMetric(metrics);
+
+  if (sleepMetric || earlyRiseMetric) {
     try {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const sleepSamples = await getSleepSamples(monthStart, now);
-      const nightSleeps = getSleepHoursPerNight(sleepSamples);
 
-      if (nightSleeps.length > 0) {
-        const totalHours = nightSleeps.reduce((sum, n) => sum + n.hours, 0);
-        const avgHours = Math.round((totalHours / nightSleeps.length) * 10) / 10;
+      // 5a. Sleep average
+      if (sleepMetric) {
+        const nightSleeps = getSleepHoursPerNight(sleepSamples);
+        console.log(nightSleeps);
+        if (nightSleeps.length > 0) {
+          const totalHours = nightSleeps.reduce((sum, n) => sum + n.hours, 0);
+          const avgHours = Math.round((totalHours / nightSleeps.length) * 10) / 10;
 
-        await metricsApi.update(sleepMetric.id, {
-          title: sleepMetric.title,
-          icon: sleepMetric.icon,
-          unit: sleepMetric.unit,
-          timeframe: sleepMetric.timeframe,
-          goal: sleepMetric.goal,
-          currentValue: avgHours,
-          type: sleepMetric.type,
+          await metricsApi.update(sleepMetric.id, {
+            title: sleepMetric.title,
+            icon: sleepMetric.icon,
+            unit: sleepMetric.unit,
+            timeframe: sleepMetric.timeframe,
+            goal: sleepMetric.goal,
+            currentValue: avgHours,
+            type: sleepMetric.type,
+          });
+
+          results.sleep.nights = nightSleeps.length;
+          results.sleep.avgHours = avgHours;
+        }
+        console.log(`Sleep: ${results.sleep.nights} nights, avg ${results.sleep.avgHours} hrs`);
+      }
+
+      // 5b. Early rise count (out of bed before 7am)
+      if (earlyRiseMetric) {
+        const earlyDays = getEarlyRiseDays(sleepSamples);
+
+        await metricsApi.update(earlyRiseMetric.id, {
+          title: earlyRiseMetric.title,
+          icon: earlyRiseMetric.icon,
+          unit: earlyRiseMetric.unit,
+          timeframe: earlyRiseMetric.timeframe,
+          goal: earlyRiseMetric.goal,
+          currentValue: earlyDays,
+          type: earlyRiseMetric.type,
         });
 
-        results.sleep.nights = nightSleeps.length;
-        results.sleep.avgHours = avgHours;
+        results.earlyRise.days = earlyDays;
+        console.log(`Early rise: ${earlyDays} days before 7am`);
       }
-      console.log(`Sleep: ${nightSleeps.length} nights, avg ${results.sleep.avgHours} hrs`);
     } catch (error) {
-      console.error('Error syncing sleep:', error);
+      console.error('Error syncing sleep data:', error);
     }
   }
 
@@ -363,5 +428,6 @@ export default {
   findRunningMetric,
   findMindfulMetric,
   findSleepMetric,
+  findEarlyRiseMetric,
   syncWorkouts,
 };
