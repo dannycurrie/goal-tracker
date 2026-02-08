@@ -41,6 +41,7 @@ const mockGetRunningWorkouts = () => {
 
 const RUNNING_METRIC_ID = 32;
 const MINDFUL_METRIC_ID = 33;
+const SLEEP_METRIC_ID = 38;
 
 // HealthKit permissions needed for reading workout data
 const healthKitPermissions = {
@@ -49,6 +50,7 @@ const healthKitPermissions = {
       AppleHealthKit.Constants.Permissions.Workout,
       AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
       AppleHealthKit.Constants.Permissions.MindfulSession,
+      AppleHealthKit.Constants.Permissions.SleepAnalysis,
       AppleHealthKit.Constants.Permissions.vo2MaxTest,
       AppleHealthKit.Constants.Permissions.Steps,
     ],
@@ -156,6 +158,65 @@ export const getMindfulSessions = (startDate, endDate = new Date()) => {
 };
 
 /**
+ * Get sleep samples from HealthKit since a given date
+ * @param {Date} startDate - Start date for the query
+ * @param {Date} endDate - End date for the query (defaults to now)
+ * @returns {Promise<Array>} Array of sleep sample objects
+ */
+export const getSleepSamples = (startDate, endDate = new Date()) => {
+  return new Promise((resolve, reject) => {
+    if (Platform.OS !== 'ios') {
+      resolve([]);
+      return;
+    }
+
+    const options = {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
+
+    AppleHealthKit.getSleepSamples(options, (error, results) => {
+      if (error) {
+        console.log('Error fetching sleep data:', error);
+        reject(error);
+        return;
+      }
+      console.log(`Found ${(results || []).length} sleep samples`);
+      resolve(results || []);
+    });
+  });
+};
+
+/**
+ * Aggregate sleep samples into total hours asleep per night.
+ * Filters for actual sleep stages (ASLEEP, CORE, DEEP, REM) and groups by
+ * the calendar date of the endDate (i.e. the morning the person woke up).
+ * @param {Array} samples - Raw sleep samples from HealthKit
+ * @returns {Array<{date: string, hours: number}>} Hours slept per night
+ */
+const getSleepHoursPerNight = (samples) => {
+  const asleepSamples = samples.filter(s =>
+    ['ASLEEP', 'CORE', 'DEEP', 'REM'].includes(s.value)
+  );
+
+  const nightMap = {};
+  for (const sample of asleepSamples) {
+    const endDate = new Date(sample.endDate);
+    const nightKey = endDate.toISOString().split('T')[0];
+    if (!nightMap[nightKey]) {
+      nightMap[nightKey] = 0;
+    }
+    const durationMs = new Date(sample.endDate).getTime() - new Date(sample.startDate).getTime();
+    nightMap[nightKey] += durationMs;
+  }
+
+  return Object.entries(nightMap).map(([date, ms]) => ({
+    date,
+    hours: Math.round((ms / (1000 * 60 * 60)) * 10) / 10,
+  }));
+};
+
+/**
  * Find the Apple Health "KM" metric in the metrics array
  * @param {Array} metrics - Array of metric objects
  * @returns {Object|null} The KM metric with source='apple_health' or null if not found
@@ -171,6 +232,15 @@ export const findRunningMetric = (metrics) => {
  */
 export const findMindfulMetric = (metrics) => {
   return metrics?.find((m) => m.id === MINDFUL_METRIC_ID && m.source === 'apple_health') || null;
+};
+
+/**
+ * Find the Apple Health sleep metric
+ * @param {Array} metrics - Array of metric objects
+ * @returns {Object|null} The sleep metric with source='apple_health' or null if not found
+ */
+export const findSleepMetric = (metrics) => {
+  return metrics?.find((m) => m.id === SLEEP_METRIC_ID && m.source === 'apple_health') || null;
 };
 
 /**
@@ -203,6 +273,7 @@ export const syncWorkouts = async (metrics) => {
   const results = {
     running: { logged: 0, total: 0 },
     mindful: { logged: 0, total: 0 },
+    sleep: { nights: 0, avgHours: 0 },
   };
 
   // 3. Sync running workouts
@@ -243,7 +314,39 @@ export const syncWorkouts = async (metrics) => {
     }
   }
 
-  // 5. Update last health sync time
+  // 5. Sync sleep data - calculate monthly average from HealthKit
+  const sleepMetric = findSleepMetric(metrics);
+  if (sleepMetric) {
+    try {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const sleepSamples = await getSleepSamples(monthStart, now);
+      const nightSleeps = getSleepHoursPerNight(sleepSamples);
+
+      if (nightSleeps.length > 0) {
+        const totalHours = nightSleeps.reduce((sum, n) => sum + n.hours, 0);
+        const avgHours = Math.round((totalHours / nightSleeps.length) * 10) / 10;
+
+        await metricsApi.update(sleepMetric.id, {
+          title: sleepMetric.title,
+          icon: sleepMetric.icon,
+          unit: sleepMetric.unit,
+          timeframe: sleepMetric.timeframe,
+          goal: sleepMetric.goal,
+          currentValue: avgHours,
+          type: sleepMetric.type,
+        });
+
+        results.sleep.nights = nightSleeps.length;
+        results.sleep.avgHours = avgHours;
+      }
+      console.log(`Sleep: ${nightSleeps.length} nights, avg ${results.sleep.avgHours} hrs`);
+    } catch (error) {
+      console.error('Error syncing sleep:', error);
+    }
+  }
+
+  // 6. Update last health sync time
   await storage.setLastHealthSyncTime();
 
   const totalLogged = results.running.logged + results.mindful.logged;
@@ -256,7 +359,9 @@ export default {
   initHealthKit,
   getRunningWorkouts,
   getMindfulSessions,
+  getSleepSamples,
   findRunningMetric,
   findMindfulMetric,
+  findSleepMetric,
   syncWorkouts,
 };
