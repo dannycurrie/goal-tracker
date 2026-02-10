@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import AppleHealthKit from 'react-native-health';
+import * as Sentry from '@sentry/react-native';
 import { storage } from './storage';
 import { metricsApi } from './api';
 
@@ -176,15 +177,34 @@ export const getSleepSamples = (startDate, endDate = new Date()) => {
       endDate: endDate.toISOString(),
     };
 
+    Sentry.addBreadcrumb({
+      category: 'healthkit.sleep',
+      message: `Querying sleep samples`,
+      data: { startDate: options.startDate, endDate: options.endDate },
+      level: 'info',
+    });
+
     AppleHealthKit.getSleepSamples(options, (error, results) => {
       if (error) {
-        console.log('Error fetching sleep data:', error);
+        Sentry.captureException(error, { tags: { feature: 'sleep_sync' } });
         reject(error);
         return;
       }
-      console.log(`Found ${(results || []).length} sleep samples`);
-      console.log(results);
-      resolve(results || []);
+
+      const samples = results || [];
+      const valueCounts = {};
+      for (const s of samples) {
+        valueCounts[s.value] = (valueCounts[s.value] || 0) + 1;
+      }
+
+      Sentry.addBreadcrumb({
+        category: 'healthkit.sleep',
+        message: `Got ${samples.length} sleep samples`,
+        data: { count: samples.length, valueCounts },
+        level: 'info',
+      });
+
+      resolve(samples);
     });
   });
 };
@@ -359,19 +379,59 @@ export const syncWorkouts = async (metrics) => {
   const sleepMetric = findSleepMetric(metrics);
   const earlyRiseMetric = findEarlyRiseMetric(metrics);
 
+  Sentry.addBreadcrumb({
+    category: 'sleep_sync',
+    message: 'Looking for sleep metrics',
+    data: {
+      sleepMetricFound: !!sleepMetric,
+      sleepMetricId: sleepMetric?.id ?? null,
+      earlyRiseMetricFound: !!earlyRiseMetric,
+      earlyRiseMetricId: earlyRiseMetric?.id ?? null,
+      totalMetrics: metrics?.length ?? 0,
+      appleHealthMetrics: metrics?.filter(m => m.source === 'apple_health').map(m => ({ id: m.id, title: m.title })),
+    },
+    level: 'info',
+  });
+
   if (sleepMetric || earlyRiseMetric) {
     try {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const sleepSamples = await getSleepSamples(monthStart, now);
 
+      Sentry.addBreadcrumb({
+        category: 'sleep_sync',
+        message: `Fetched ${sleepSamples.length} sleep samples for month`,
+        data: {
+          monthStart: monthStart.toISOString(),
+          now: now.toISOString(),
+          sampleCount: sleepSamples.length,
+          firstSample: sleepSamples[0] ?? null,
+          lastSample: sleepSamples[sleepSamples.length - 1] ?? null,
+        },
+        level: 'info',
+      });
+
       // 5a. Sleep average
       if (sleepMetric) {
         const nightSleeps = getSleepHoursPerNight(sleepSamples);
-        console.log(nightSleeps);
+
+        Sentry.addBreadcrumb({
+          category: 'sleep_sync',
+          message: `Aggregated into ${nightSleeps.length} nights`,
+          data: { nightSleeps },
+          level: 'info',
+        });
+
         if (nightSleeps.length > 0) {
           const totalHours = nightSleeps.reduce((sum, n) => sum + n.hours, 0);
           const avgHours = Math.round((totalHours / nightSleeps.length) * 10) / 10;
+
+          Sentry.addBreadcrumb({
+            category: 'sleep_sync',
+            message: `Updating sleep metric ${sleepMetric.id} with avg ${avgHours} hrs`,
+            level: 'info',
+          });
 
           await metricsApi.update(sleepMetric.id, {
             title: sleepMetric.title,
@@ -385,13 +445,24 @@ export const syncWorkouts = async (metrics) => {
 
           results.sleep.nights = nightSleeps.length;
           results.sleep.avgHours = avgHours;
+        } else {
+          Sentry.addBreadcrumb({
+            category: 'sleep_sync',
+            message: 'No sleep nights found after aggregation',
+            level: 'warning',
+          });
         }
-        console.log(`Sleep: ${results.sleep.nights} nights, avg ${results.sleep.avgHours} hrs`);
       }
 
       // 5b. Early rise count (out of bed before 7am)
       if (earlyRiseMetric) {
         const earlyDays = getEarlyRiseDays(sleepSamples);
+
+        Sentry.addBreadcrumb({
+          category: 'sleep_sync',
+          message: `Early rise: ${earlyDays} days before 7am`,
+          level: 'info',
+        });
 
         await metricsApi.update(earlyRiseMetric.id, {
           title: earlyRiseMetric.title,
@@ -404,12 +475,23 @@ export const syncWorkouts = async (metrics) => {
         });
 
         results.earlyRise.days = earlyDays;
-        console.log(`Early rise: ${earlyDays} days before 7am`);
       }
     } catch (error) {
-      console.error('Error syncing sleep data:', error);
+      Sentry.captureException(error, {
+        tags: { feature: 'sleep_sync' },
+        extra: {
+          sleepMetricId: sleepMetric?.id,
+          earlyRiseMetricId: earlyRiseMetric?.id,
+        },
+      });
     }
   }
+
+  Sentry.captureMessage('Health sync completed', {
+    level: 'info',
+    tags: { feature: 'health_sync' },
+    extra: { results },
+  });
 
   // 6. Update last health sync time
   await storage.setLastHealthSyncTime();

@@ -14,7 +14,8 @@
           "healthSharePermission": "This app needs access to your workout data to track your running distance.",
           "healthUpdatePermission": "This app needs access to update your health data."
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "splash": {
       "image": "./assets/splash-icon.png",

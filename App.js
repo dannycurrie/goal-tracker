@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal, AppleHealthScreen } from './components';
 import { needsReset } from './components/utils';
@@ -8,6 +9,11 @@ import { storage } from './storage';
 import { useNetworkStatus } from './networkStatus';
 import { offlineQueue, OP_TYPES } from './offlineQueue';
 import { syncWorkouts } from './healthKit';
+
+Sentry.init({
+  dsn: 'https://b65f3325ff96581024de66a6adfadcec@o4510863626403840.ingest.de.sentry.io/4510863630139472',
+  debug: __DEV__,
+});
 
 /**
    *
@@ -21,7 +27,7 @@ const getCurrentDateString = () => {
 };
 const currentDateString = getCurrentDateString(); 
 
-export default function App() {
+function App() {
   const [metrics, setMetrics] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMetric, setEditingMetric] = useState(null);
@@ -576,6 +582,8 @@ export default function App() {
     </View>
   );
 }
+
+export default Sentry.wrap(App);
 
 const styles = StyleSheet.create({
   container: {
