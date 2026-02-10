@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import AppleHealthKit from 'react-native-health';
-import * as Sentry from '@sentry/react-native';
 import { storage } from './storage';
 import { metricsApi } from './api';
+import { logger } from './logger';
 
 const mockMetricsApi = {
   increment: (id, value) => {
@@ -177,16 +177,9 @@ export const getSleepSamples = (startDate, endDate = new Date()) => {
       endDate: endDate.toISOString(),
     };
 
-    Sentry.addBreadcrumb({
-      category: 'healthkit.sleep',
-      message: `Querying sleep samples`,
-      data: { startDate: options.startDate, endDate: options.endDate },
-      level: 'info',
-    });
-
     AppleHealthKit.getSleepSamples(options, (error, results) => {
       if (error) {
-        Sentry.captureException(error, { tags: { feature: 'sleep_sync' } });
+        logger.error('Error fetching sleep data', { error: String(error) });
         reject(error);
         return;
       }
@@ -196,12 +189,11 @@ export const getSleepSamples = (startDate, endDate = new Date()) => {
       for (const s of samples) {
         valueCounts[s.value] = (valueCounts[s.value] || 0) + 1;
       }
-
-      Sentry.addBreadcrumb({
-        category: 'healthkit.sleep',
-        message: `Got ${samples.length} sleep samples`,
-        data: { count: samples.length, valueCounts },
-        level: 'info',
+      logger.info('Got sleep samples from HealthKit', {
+        count: samples.length,
+        valueCounts,
+        startDate: options.startDate,
+        endDate: options.endDate,
       });
 
       resolve(samples);
@@ -379,18 +371,12 @@ export const syncWorkouts = async (metrics) => {
   const sleepMetric = findSleepMetric(metrics);
   const earlyRiseMetric = findEarlyRiseMetric(metrics);
 
-  Sentry.addBreadcrumb({
-    category: 'sleep_sync',
-    message: 'Looking for sleep metrics',
-    data: {
-      sleepMetricFound: !!sleepMetric,
-      sleepMetricId: sleepMetric?.id ?? null,
-      earlyRiseMetricFound: !!earlyRiseMetric,
-      earlyRiseMetricId: earlyRiseMetric?.id ?? null,
-      totalMetrics: metrics?.length ?? 0,
-      appleHealthMetrics: metrics?.filter(m => m.source === 'apple_health').map(m => ({ id: m.id, title: m.title })),
-    },
-    level: 'info',
+  logger.info('Sleep metrics lookup', {
+    sleepMetricFound: !!sleepMetric,
+    sleepMetricId: sleepMetric?.id ?? null,
+    earlyRiseMetricFound: !!earlyRiseMetric,
+    earlyRiseMetricId: earlyRiseMetric?.id ?? null,
+    appleHealthMetrics: metrics?.filter(m => m.source === 'apple_health').map(m => ({ id: m.id, title: m.title })),
   });
 
   if (sleepMetric || earlyRiseMetric) {
@@ -399,38 +385,29 @@ export const syncWorkouts = async (metrics) => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const sleepSamples = await getSleepSamples(monthStart, now);
 
-      Sentry.addBreadcrumb({
-        category: 'sleep_sync',
-        message: `Fetched ${sleepSamples.length} sleep samples for month`,
-        data: {
-          monthStart: monthStart.toISOString(),
-          now: now.toISOString(),
-          sampleCount: sleepSamples.length,
-          firstSample: sleepSamples[0] ?? null,
-          lastSample: sleepSamples[sleepSamples.length - 1] ?? null,
-        },
-        level: 'info',
+      logger.info('Sleep samples fetched for month', {
+        sampleCount: sleepSamples.length,
+        monthStart: monthStart.toISOString(),
+        now: now.toISOString(),
+        firstSample: sleepSamples[0] ?? null,
+        lastSample: sleepSamples[sleepSamples.length - 1] ?? null,
       });
 
       // 5a. Sleep average
       if (sleepMetric) {
         const nightSleeps = getSleepHoursPerNight(sleepSamples);
 
-        Sentry.addBreadcrumb({
-          category: 'sleep_sync',
-          message: `Aggregated into ${nightSleeps.length} nights`,
-          data: { nightSleeps },
-          level: 'info',
-        });
+        logger.info('Sleep nights aggregated', { nightSleeps });
 
         if (nightSleeps.length > 0) {
           const totalHours = nightSleeps.reduce((sum, n) => sum + n.hours, 0);
           const avgHours = Math.round((totalHours / nightSleeps.length) * 10) / 10;
 
-          Sentry.addBreadcrumb({
-            category: 'sleep_sync',
-            message: `Updating sleep metric ${sleepMetric.id} with avg ${avgHours} hrs`,
-            level: 'info',
+          logger.info('Updating sleep metric', {
+            metricId: sleepMetric.id,
+            avgHours,
+            totalHours,
+            nightCount: nightSleeps.length,
           });
 
           await metricsApi.update(sleepMetric.id, {
@@ -446,10 +423,8 @@ export const syncWorkouts = async (metrics) => {
           results.sleep.nights = nightSleeps.length;
           results.sleep.avgHours = avgHours;
         } else {
-          Sentry.addBreadcrumb({
-            category: 'sleep_sync',
-            message: 'No sleep nights found after aggregation',
-            level: 'warning',
+          logger.warn('No sleep nights after aggregation', {
+            rawSampleCount: sleepSamples.length,
           });
         }
       }
@@ -458,11 +433,7 @@ export const syncWorkouts = async (metrics) => {
       if (earlyRiseMetric) {
         const earlyDays = getEarlyRiseDays(sleepSamples);
 
-        Sentry.addBreadcrumb({
-          category: 'sleep_sync',
-          message: `Early rise: ${earlyDays} days before 7am`,
-          level: 'info',
-        });
+        logger.info('Early rise count', { earlyDays });
 
         await metricsApi.update(earlyRiseMetric.id, {
           title: earlyRiseMetric.title,
@@ -477,21 +448,9 @@ export const syncWorkouts = async (metrics) => {
         results.earlyRise.days = earlyDays;
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { feature: 'sleep_sync' },
-        extra: {
-          sleepMetricId: sleepMetric?.id,
-          earlyRiseMetricId: earlyRiseMetric?.id,
-        },
-      });
+      logger.error('Error syncing sleep data', { error: String(error), stack: error?.stack });
     }
   }
-
-  Sentry.captureMessage('Health sync completed', {
-    level: 'info',
-    tags: { feature: 'health_sync' },
-    extra: { results },
-  });
 
   // 6. Update last health sync time
   await storage.setLastHealthSyncTime();
