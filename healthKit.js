@@ -250,6 +250,8 @@ const getEarlyRiseDays = (samples) => {
     }
   }
 
+  logger.info('Night map', { nightMap });
+
   let count = 0;
   for (const wakeUpTime of Object.values(nightMap)) {
     if (wakeUpTime.getHours() < 7) {
