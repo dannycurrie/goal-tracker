@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 
-const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
+const EditMetricModal = ({ visible, onClose, onSave, onArchive, onAddValue, metric }) => {
   const [unit, setUnit] = useState('');
   const [timeframe, setTimeframe] = useState('week');
   const [goal, setGoal] = useState('');
   const [icon, setIcon] = useState('');
   const [currentValue, setCurrentValue] = useState('');
+  const [addAmount, setAddAmount] = useState('');
 
   // Pre-populate form when metric changes
   useEffect(() => {
@@ -16,6 +17,7 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
       setGoal(metric.goal?.toString() || '');
       setIcon(metric.icon || '');
       setCurrentValue(metric.currentValue?.toString() || '0');
+      setAddAmount('');
     } else {
       // Reset form when modal closes
       setUnit('');
@@ -23,6 +25,7 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
       setGoal('');
       setIcon('');
       setCurrentValue('');
+      setAddAmount('');
     }
   }, [metric]);
 
@@ -47,6 +50,16 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
       currentValue: parseInt(currentValue, 10),
     });
   };
+
+  const handleAddValue = () => {
+    const amount = parseFloat(addAmount);
+    if (!amount || amount <= 0 || !onAddValue) return;
+    onAddValue(metric.id, amount);
+    setCurrentValue(prev => String(parseFloat(prev || 0) + amount));
+    setAddAmount('');
+  };
+
+  const showAddValue = metric?.type === 'timed' || metric?.source === 'apple_health';
 
   const handleArchive = () => {
     if (onArchive && metric) {
@@ -160,6 +173,25 @@ const EditMetricModal = ({ visible, onClose, onSave, onArchive, metric }) => {
               </View>
             )}
 
+            {showAddValue && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Add {metric?.unit || 'value'}</Text>
+                <View style={styles.addValueRow}>
+                  <TextInput
+                    style={[styles.input, styles.addValueInput]}
+                    value={addAmount}
+                    onChangeText={setAddAmount}
+                    placeholder="e.g., 30"
+                    placeholderTextColor="#999"
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity style={styles.addValueButton} onPress={handleAddValue}>
+                    <Text style={styles.addValueButtonText}>ADD</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             <TouchableOpacity style={styles.archiveButton} onPress={handleArchive}>
               <Text style={styles.archiveButtonText}>ARCHIVE METRIC</Text>
             </TouchableOpacity>
@@ -259,6 +291,26 @@ const styles = StyleSheet.create({
   typeHint: {
     fontSize: 12,
     color: '#999',
+  },
+  addValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addValueInput: {
+    flex: 1,
+    marginRight: 10,
+  },
+  addValueButton: {
+    backgroundColor: '#FF7F5C',
+    borderRadius: 10,
+    padding: 15,
+    paddingHorizontal: 25,
+  },
+  addValueButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   archiveButton: {
     padding: 15,

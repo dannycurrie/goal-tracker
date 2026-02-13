@@ -255,6 +255,28 @@ function App() {
     }
   };
 
+  const handleAddValue = async (metricId, amount) => {
+    const previousMetrics = metrics;
+    const updatedMetrics = metrics.map(metric =>
+      metric.id === metricId
+        ? { ...metric, currentValue: metric.currentValue + amount }
+        : metric
+    );
+    await updateMetricsWithCache(updatedMetrics);
+
+    if (isOnline) {
+      try {
+        await metricsApi.increment(metricId, amount);
+      } catch (error) {
+        console.error('Failed to add value:', error);
+        await updateMetricsWithCache(previousMetrics);
+        alert('Failed to add value. Please try again.');
+      }
+    } else {
+      await offlineQueue.add(OP_TYPES.INCREMENT, metricId, { value: amount });
+    }
+  };
+
   const handleEditMetric = (metricId) => {
     const metric = metrics.find(m => m.id === metricId);
     if (metric) {
@@ -552,6 +574,7 @@ function App() {
         onClose={() => setEditingMetric(null)}
         onSave={handleSaveEdit}
         onArchive={handleArchiveMetric}
+        onAddValue={handleAddValue}
       />
 
       <CheckInModal
