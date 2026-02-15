@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { metricsApi } from './api';
-import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal, AppleHealthScreen } from './components';
+import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal, AppleHealthScreen, ExerciseChecklistScreen } from './components';
 import { needsReset } from './components/utils';
 import { storage } from './storage';
 import { useNetworkStatus } from './networkStatus';
@@ -33,6 +33,7 @@ function App() {
   const [hasCheckedResets, setHasCheckedResets] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAppleHealthScreen, setShowAppleHealthScreen] = useState(false);
+  const [showExerciseChecklist, setShowExerciseChecklist] = useState(false);
   const { isOnline, isInitialized } = useNetworkStatus();
   const wasOnlineRef = useRef(false);
 
@@ -444,6 +445,28 @@ function App() {
     }
   };
 
+  const handleToggleTask = async (metric) => {
+    const previousMetrics = metrics;
+    const newValue = metric.currentValue === 1 ? 0 : 1;
+    const updatedMetric = { ...metric, currentValue: newValue };
+    const updatedMetrics = metrics.map(m =>
+      m.id === metric.id ? updatedMetric : m
+    );
+    await updateMetricsWithCache(updatedMetrics);
+
+    if (isOnline) {
+      try {
+        await metricsApi.update(metric.id, updatedMetric);
+      } catch (error) {
+        console.error('Failed to toggle task:', error);
+        await updateMetricsWithCache(previousMetrics);
+        alert('Failed to update task. Please try again.');
+      }
+    } else {
+      await offlineQueue.add(OP_TYPES.UPDATE, metric.id, updatedMetric);
+    }
+  };
+
   const calculateCheckInAverages = async () => {
     const checkinMetrics = metrics.filter(m => m.type === 'checkin');
     const averages = {};
@@ -511,11 +534,14 @@ function App() {
     }
   }, [metrics, loading, hasCheckedResets]);
 
-  // Filter out archived metrics and apple_health source metrics (shown in separate screen)
-  const activeMetrics = metrics.filter(m => !m.archived && m.source !== 'apple_health');
+  // Filter out archived metrics, apple_health source metrics, and task metrics (shown in separate screens)
+  const activeMetrics = metrics.filter(m => !m.archived && m.source !== 'apple_health' && m.type !== 'task');
 
   // Get the Apple Health metric
   const appleHealthMetrics = metrics.filter(m => m.source === 'apple_health' && !m.archived);
+
+  // Get task metrics for exercise checklist
+  const taskMetrics = metrics.filter(m => m.type === 'task' && !m.archived);
 
   if (loading) {
     return (
@@ -557,8 +583,8 @@ function App() {
           {!isOnline && <Text style={styles.offlineIndicator}>OFFLINE</Text>}
           {isSyncing && <Text style={styles.syncingIndicator}>SYNCING...</Text>}
         </View>
-        <TouchableOpacity style={styles.navButton}>
-          <Text style={styles.navDate}>{currentDateString}</Text>
+        <TouchableOpacity style={styles.navButton} onPress={() => setShowExerciseChecklist(true)}>
+          <Text style={styles.navIcon}>✅</Text>
         </TouchableOpacity>
       </View>
 
@@ -595,6 +621,13 @@ function App() {
           setShowAppleHealthScreen(false);
           setEditingMetric(metric);
         }}
+      />
+
+      <ExerciseChecklistScreen
+        visible={showExerciseChecklist}
+        onClose={() => setShowExerciseChecklist(false)}
+        metrics={taskMetrics}
+        onToggleTask={handleToggleTask}
       />
     </View>
   );
