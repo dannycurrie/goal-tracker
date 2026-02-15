@@ -1,3 +1,12 @@
+
+//**
+// Check if a sample is a complete night sample.
+// To keep it simple, a complete night is more than 4 hours.
+// */
+const isCompleteNight = (nightEntry) => {
+  return nightEntry.hours > 4;
+};
+
 /**
  * Aggregate sleep samples into total hours asleep per night.
  * Filters for actual sleep stages (ASLEEP, CORE, DEEP, REM) and groups by
@@ -21,10 +30,12 @@ const getSleepHoursPerNight = (samples) => {
     nightMap[nightKey] += durationMs;
   }
 
+  // convert to hours and filter out any nights that are less than 4 hours
   return Object.entries(nightMap).map(([date, ms]) => ({
     date,
     hours: Math.round((ms / (1000 * 60 * 60)) * 10) / 10,
-  }));
+  }))
+  .filter(isCompleteNight);
 };
 
 /**
@@ -53,7 +64,7 @@ const getEarlyRiseDays = (samples) => {
 
 
   console.log('Night map', nightMap);
-  
+
   let count = 0;
   for (const wakeUpTime of Object.values(nightMap)) {
     if (wakeUpTime.getHours() < 7) {

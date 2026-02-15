@@ -2,7 +2,7 @@ const { getEarlyRiseDays, getSleepHoursPerNight } = require('./sleepUtils');
 const { mockSleepSamples } = require('./mockSleepSamples');
 
 describe('getEarlyRiseDays', () => {
-  it.only('counts 1 early rise day for the mock data (woke at 06:28 UTC)', () => {
+  it('counts 1 early rise day for the mock data (woke at 06:28 UTC)', () => {
     const result = getEarlyRiseDays(mockSleepSamples);
     expect(result).toBe(1);
   });
@@ -57,11 +57,11 @@ describe('getSleepHoursPerNight', () => {
     const samples = [
       { startDate: '2026-02-13T02:00:00.000+0000', endDate: '2026-02-13T03:00:00.000+0000', value: 'AWAKE' },
       { startDate: '2026-02-13T03:00:00.000+0000', endDate: '2026-02-13T04:00:00.000+0000', value: 'INBED' },
-      { startDate: '2026-02-13T04:00:00.000+0000', endDate: '2026-02-13T06:00:00.000+0000', value: 'DEEP' },
+      { startDate: '2026-02-13T04:00:00.000+0000', endDate: '2026-02-13T09:00:00.000+0000', value: 'DEEP' },
     ];
     const result = getSleepHoursPerNight(samples);
     expect(result).toHaveLength(1);
-    expect(result[0].hours).toBe(2);
+    expect(result[0].hours).toBe(5);
   });
 
   it('returns empty array for no samples', () => {
