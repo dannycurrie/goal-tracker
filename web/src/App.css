@@ -12,7 +12,7 @@ body {
 }
 
 .app {
-  max-width: 800px;
+  max-width: 600px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -21,36 +21,36 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 12px;
 }
 
 h1 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
 }
 
 .date-controls {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-end;
 }
 
 .range-buttons {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .range-buttons button {
-  padding: 8px 14px;
+  padding: 5px 10px;
   border: 1px solid #333;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #16213e;
   color: #888;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -69,20 +69,21 @@ h1 {
 .date-range {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .date-range span {
   color: #888;
+  font-size: 12px;
 }
 
 .date-range input {
-  padding: 8px 12px;
+  padding: 5px 8px;
   border: 1px solid #333;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #16213e;
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .loading {
@@ -92,46 +93,67 @@ h1 {
 }
 
 .metrics-section {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
-  color: #888;
+  color: #666;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+  padding-left: 4px;
 }
 
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 15px;
-}
-
-.metric-card {
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
   background: #16213e;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
+  margin-bottom: 4px;
 }
 
 .metric-icon {
-  font-size: 28px;
-  margin-bottom: 10px;
+  font-size: 18px;
+  width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.metric-title {
+  font-size: 14px;
+  color: #ccc;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric-value {
-  font-size: 32px;
+  font-size: 16px;
   font-weight: 700;
   color: #ff7f5c;
+  flex-shrink: 0;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  width: 36px;
 }
 
 .metric-trend {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  margin: 4px 0;
+  flex-shrink: 0;
+  width: 44px;
+  text-align: right;
 }
 
 .trend-up {
@@ -144,16 +166,4 @@ h1 {
 
 .trend-same {
   color: #888;
-}
-
-.metric-label {
-  font-size: 12px;
-  color: #888;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.metric-title {
-  font-size: 14px;
-  color: #ccc;
 }
