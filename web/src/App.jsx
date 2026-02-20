@@ -199,39 +199,50 @@ function App() {
       {loading ? (
         <div className="loading">Loading...</div>
       ) : (
-        <div className="metrics-grid">
-          {metrics.map(metric => {
-            const total = totals[metric.id]
-            const prev = prevTotals[metric.id]
-            const displayValue = total?.value !== null ? total?.value : '-'
-            const label = metric.type === 'checkin' ? 'avg' : metric.unit
+        <>
+          {[
+            { title: 'Manual', items: metrics.filter(m => m.source !== 'apple_health' && m.type !== 'task') },
+            { title: 'Apple Health', items: metrics.filter(m => m.source === 'apple_health') },
+            { title: 'Exercise', items: metrics.filter(m => m.type === 'task') },
+          ].filter(g => g.items.length > 0).map(group => (
+            <section key={group.title} className="metrics-section">
+              <h2 className="section-title">{group.title}</h2>
+              <div className="metrics-grid">
+                {group.items.map(metric => {
+                  const total = totals[metric.id]
+                  const prev = prevTotals[metric.id]
+                  const displayValue = total?.value !== null ? total?.value : '-'
+                  const label = metric.type === 'checkin' ? 'avg' : metric.unit
 
-            // Calculate trend
-            let trend = null
-            if (total?.value != null && prev?.value != null && prev.value !== 0) {
-              const diff = total.value - prev.value
-              trend = { diff, direction: diff > 0 ? 'up' : diff < 0 ? 'down' : 'same' }
-            } else if (total?.value != null && prev?.value === 0 && total.value > 0) {
-              trend = { diff: total.value, direction: 'up' }
-            }
+                  // Calculate trend
+                  let trend = null
+                  if (total?.value != null && prev?.value != null && prev.value !== 0) {
+                    const diff = total.value - prev.value
+                    trend = { diff, direction: diff > 0 ? 'up' : diff < 0 ? 'down' : 'same' }
+                  } else if (total?.value != null && prev?.value === 0 && total.value > 0) {
+                    trend = { diff: total.value, direction: 'up' }
+                  }
 
-            return (
-              <div key={metric.id} className="metric-card">
-                <div className="metric-icon">{metric.icon}</div>
-                <div className="metric-value">{displayValue}</div>
-                {trend && (
-                  <div className={`metric-trend trend-${trend.direction}`}>
-                    {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}
-                    {' '}
-                    {Math.abs(trend.diff).toFixed(metric.type === 'checkin' ? 1 : 0)}
-                  </div>
-                )}
-                <div className="metric-label">{label}</div>
-                <div className="metric-title">{metric.title}</div>
+                  return (
+                    <div key={metric.id} className="metric-card">
+                      <div className="metric-icon">{metric.icon}</div>
+                      <div className="metric-value">{displayValue}</div>
+                      {trend && (
+                        <div className={`metric-trend trend-${trend.direction}`}>
+                          {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}
+                          {' '}
+                          {Math.abs(trend.diff).toFixed(metric.type === 'checkin' ? 1 : 0)}
+                        </div>
+                      )}
+                      <div className="metric-label">{label}</div>
+                      <div className="metric-title">{metric.title}</div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
-        </div>
+            </section>
+          ))}
+        </>
       )}
     </div>
   )
