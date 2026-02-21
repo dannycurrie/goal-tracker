@@ -114,6 +114,18 @@ h1 {
   border-radius: 6px;
   background: #16213e;
   margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.metric-row:hover {
+  background: #1a2744;
+}
+
+.metric-row.expanded {
+  background: #1a2744;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 0;
 }
 
 .metric-icon {
@@ -166,4 +178,39 @@ h1 {
 
 .trend-same {
   color: #888;
+}
+
+.logs-panel {
+  background: #111a30;
+  border-radius: 0 0 6px 6px;
+  padding: 6px 10px 6px 46px;
+  margin-bottom: 4px;
+}
+
+.logs-empty {
+  color: #555;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.log-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #1a2244;
+}
+
+.log-row:last-child {
+  border-bottom: none;
+}
+
+.log-value {
+  color: #ff7f5c;
+  font-weight: 600;
+}
+
+.log-date {
+  color: #666;
+  font-size: 12px;
 }

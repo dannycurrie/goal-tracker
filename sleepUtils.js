@@ -62,9 +62,6 @@ const getEarlyRiseDays = (samples) => {
     }
   }
 
-
-  console.log('Night map', nightMap);
-
   let count = 0;
   for (const wakeUpTime of Object.values(nightMap)) {
     if (wakeUpTime.getHours() < 7) {

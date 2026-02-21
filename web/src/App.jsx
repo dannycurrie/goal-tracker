@@ -103,6 +103,8 @@ function App() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [loading, setLoading] = useState(true)
+  const [expandedMetric, setExpandedMetric] = useState(null)
+  const [logs, setLogs] = useState([])
 
   // Update dates when range changes
   useEffect(() => {
@@ -157,6 +159,26 @@ function App() {
         setLoading(false)
       })
   }, [metrics, dateFrom, dateTo, selectedRange])
+
+  const handleRowClick = (metricId) => {
+    if (expandedMetric === metricId) {
+      setExpandedMetric(null)
+      setLogs([])
+      return
+    }
+    setExpandedMetric(metricId)
+    setLogs([])
+    fetch(`${API_BASE}/metrics/${metricId}/logs`)
+      .then(res => res.json())
+      .then(data => {
+        const filtered = (data.logs || []).filter(log => {
+          const d = log.createdAt.split('T')[0]
+          return d >= dateFrom && d <= dateTo
+        })
+        setLogs(filtered)
+      })
+      .catch(() => setLogs([]))
+  }
 
   return (
     <div className="app">
@@ -221,19 +243,38 @@ function App() {
                   trend = { diff: total.value, direction: 'up' }
                 }
 
+                const isExpanded = expandedMetric === metric.id
                 return (
-                  <div key={metric.id} className="metric-row">
-                    <span className="metric-icon">{metric.icon}</span>
-                    <span className="metric-title">{metric.title}</span>
-                    <span className="metric-value">{displayValue}</span>
-                    <span className="metric-label">{label}</span>
-                    {trend ? (
-                      <span className={`metric-trend trend-${trend.direction}`}>
-                        {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}
-                        {Math.abs(trend.diff).toFixed(metric.type === 'checkin' ? 1 : 0)}
-                      </span>
-                    ) : (
-                      <span className="metric-trend" />
+                  <div key={metric.id}>
+                    <div className={`metric-row${isExpanded ? ' expanded' : ''}`} onClick={() => handleRowClick(metric.id)}>
+                      <span className="metric-icon">{metric.icon}</span>
+                      <span className="metric-title">{metric.title}</span>
+                      <span className="metric-value">{displayValue}</span>
+                      <span className="metric-label">{label}</span>
+                      {trend ? (
+                        <span className={`metric-trend trend-${trend.direction}`}>
+                          {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}
+                          {Math.abs(trend.diff).toFixed(metric.type === 'checkin' ? 1 : 0)}
+                        </span>
+                      ) : (
+                        <span className="metric-trend" />
+                      )}
+                    </div>
+                    {isExpanded && (
+                      <div className="logs-panel">
+                        {logs.length === 0 ? (
+                          <div className="logs-empty">No logs in this period</div>
+                        ) : (
+                          logs.map(log => (
+                            <div key={log.id} className="log-row">
+                              <span className="log-value">{log.value}</span>
+                              <span className="log-date">
+                                {new Date(log.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
                   </div>
                 )
