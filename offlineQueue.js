@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { logger } from './logger';
 
 // Operation types
 export const OP_TYPES = {
@@ -53,10 +54,10 @@ export const offlineQueue = {
       } catch (error) {
         // If 404, the metric was deleted on server - skip it
         if (error.response?.status === 404) {
-          console.log(`Skipping operation for deleted metric ${op.metricId}`);
+          logger.info('Skipping operation for deleted metric', { metricId: op.metricId, opId: op.id });
           processed++;
         } else {
-          console.error(`Failed to process operation ${op.id}:`, error);
+          logger.error('Failed to process offline operation', { opId: op.id, type: op.type, metricId: op.metricId, error: String(error) });
           remainingQueue.push(op);
           failed++;
         }
@@ -95,6 +96,6 @@ const executeOperation = async (op, metricsApi) => {
       await metricsApi.reset(op.metricId);
       break;
     default:
-      console.warn(`Unknown operation type: ${op.type}`);
+      logger.warn('Unknown operation type', { type: op.type, opId: op.id });
   }
 };

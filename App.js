@@ -8,6 +8,7 @@ import { storage } from './storage';
 import { useNetworkStatus } from './networkStatus';
 import { offlineQueue, OP_TYPES } from './offlineQueue';
 import { syncWorkouts } from './healthKit';
+import { logger } from './logger';
 
 /**
    *
@@ -42,7 +43,7 @@ function App() {
     const loadFromCache = async () => {
       await offlineQueue.init();
       const cachedMetrics = await storage.loadMetrics();
-      console.log('Loaded from cache:', cachedMetrics?.length ?? 0, 'metrics');
+      logger.info('Loaded from cache', { count: cachedMetrics?.length ?? 0 });
       if (cachedMetrics && cachedMetrics.length > 0) {
         setMetrics(cachedMetrics);
       }
@@ -57,7 +58,7 @@ function App() {
     if (!isInitialized) return;
 
     if (isOnline && !wasOnlineRef.current) {
-      console.log('Online, syncing with server...');
+      logger.info('Online, syncing with server');
       syncWithServer();
     }
     wasOnlineRef.current = isOnline;
@@ -68,9 +69,9 @@ function App() {
     try {
       // Process any queued offline operations first
       if (offlineQueue.hasPending()) {
-        console.log('Processing offline queue...');
+        logger.info('Processing offline queue');
         const result = await offlineQueue.processQueue(metricsApi);
-        console.log(`Processed ${result.processed} operations, ${result.failed} failed`);
+        logger.info('Offline queue processed', { processed: result.processed, failed: result.failed });
       }
 
       // Fetch fresh data from server
@@ -82,7 +83,7 @@ function App() {
         await syncHealthData(loadedMetrics);
       }
     } catch (error) {
-      console.error('Sync failed:', error);
+      logger.error('Sync failed', { error: String(error) });
     } finally {
       setIsSyncing(false);
     }
@@ -93,11 +94,11 @@ function App() {
     try {
       const result = await syncWorkouts(currentMetrics);
       if (result.synced) {
-        console.log('Health sync complete, reloading metrics');
+        logger.info('Health sync complete, reloading metrics');
         await loadMetrics();
       }
     } catch (error) {
-      console.error('Health sync failed:', error);
+      logger.error('Health sync failed', { error: String(error) });
       // Fail silently - health sync is not critical
     }
   };
@@ -127,7 +128,7 @@ function App() {
       await storage.saveMetrics(formattedMetrics);
       return formattedMetrics;
     } catch (error) {
-      console.error('Failed to load metrics:', error);
+      logger.error('Failed to load metrics', { error: String(error) });
       // Keep current metrics on error - don't overwrite with empty array
       return null;
     } finally {
@@ -152,7 +153,7 @@ function App() {
     }
 
     if (metricsToReset.length > 0) {
-      console.log(`Resetting ${metricsToReset.length} metrics...`);
+      logger.info('Resetting metrics', { count: metricsToReset.length });
 
       // Update local state immediately
       const updatedMetrics = metrics.map(m => {
@@ -169,7 +170,7 @@ function App() {
           try {
             await metricsApi.reset(metric.id);
           } catch (error) {
-            console.error(`Failed to reset metric ${metric.id}:`, error);
+            logger.error('Failed to reset metric', { metricId: metric.id, error: String(error) });
           }
         } else {
           await offlineQueue.add(OP_TYPES.RESET, metric.id);
@@ -221,7 +222,7 @@ function App() {
         );
         await updateMetricsWithCache(updatedMetrics);
       } catch (error) {
-        console.error('Failed to create metric:', error);
+        logger.error('Failed to create metric', { error: String(error) });
         // Revert on error
         await updateMetricsWithCache(metrics);
         alert('Failed to create metric. Please try again.');
@@ -245,7 +246,7 @@ function App() {
       try {
         await metricsApi.increment(metricId);
       } catch (error) {
-        console.error('Failed to increment metric:', error);
+        logger.error('Failed to increment metric', { metricId, error: String(error) });
         // Revert on error
         await updateMetricsWithCache(metrics);
         alert('Failed to update metric. Please try again.');
@@ -269,7 +270,7 @@ function App() {
       try {
         await metricsApi.increment(metricId, amount);
       } catch (error) {
-        console.error('Failed to add value:', error);
+        logger.error('Failed to add value', { metricId, amount, error: String(error) });
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to add value. Please try again.');
       }
@@ -297,7 +298,7 @@ function App() {
       try {
         await metricsApi.update(updatedMetric.id, updatedMetric);
       } catch (error) {
-        console.error('Failed to update metric:', error);
+        logger.error('Failed to update metric', { metricId: updatedMetric.id, error: String(error) });
         // Revert on error
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to save changes. Please try again.');
@@ -322,7 +323,7 @@ function App() {
       try {
         await metricsApi.archive(metricId);
       } catch (error) {
-        console.error('Failed to archive metric:', error);
+        logger.error('Failed to archive metric', { metricId, error: String(error) });
         // Revert on error
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to archive metric. Please try again.');
@@ -371,13 +372,13 @@ function App() {
       );
       await updateMetricsWithCache(updatedMetrics);
 
-      console.log(`Logged ${completeMinutes} minutes`);
+      logger.info('Timer stopped', { metricId, minutes: completeMinutes });
 
       if (isOnline) {
         try {
           await metricsApi.update(metricId, updatedMetric);
         } catch (error) {
-          console.error('Failed to update metric:', error);
+          logger.error('Failed to save timer', { metricId, error: String(error) });
           // Keep local changes, will sync later
         }
       } else {
@@ -418,7 +419,7 @@ function App() {
         // Recalculate averages
         await calculateCheckInAverages();
       } catch (error) {
-        console.error('Failed to save check-in:', error);
+        logger.error('Failed to save check-in', { metricId: checkInMetric.id, error: String(error) });
         // Keep local changes, will sync later
       }
     } else {
@@ -428,7 +429,7 @@ function App() {
   };
 
   const handleMetricPress = (metric) => {
-    console.log('handle metric press: metric', metric);
+    logger.info('Metric pressed', { metricId: metric.id, type: metric.type });
     if (metric.type === 'timed') {
       // Check if this metric's timer is running
       if (activeTimer?.metricId === metric.id) {
@@ -458,7 +459,7 @@ function App() {
       try {
         await metricsApi.update(metric.id, updatedMetric);
       } catch (error) {
-        console.error('Failed to toggle task:', error);
+        logger.error('Failed to toggle task', { metricId: metric.id, error: String(error) });
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to update task. Please try again.');
       }
@@ -497,7 +498,7 @@ function App() {
           averages[metric.id] = '-';
         }
       } catch (error) {
-        console.error(`Failed to fetch logs for metric ${metric.id}:`, error);
+        logger.error('Failed to fetch logs for metric', { metricId: metric.id, error: String(error) });
         averages[metric.id] = '-';
       }
     }

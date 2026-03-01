@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from './logger';
 const prodURL = 'https://goal-tracker-zeta-five.vercel.app/api';
 const devURL = 'http://localhost:3000/api';
 
@@ -18,7 +19,7 @@ export const metricsApi = {
       const response = await api.get('/metrics');
       return response.data.metrics;
     } catch (error) {
-        console.error('Error fetching metrics:', error.request);
+        logger.error('Error fetching metrics', { error: String(error) });
       throw error;
     }
   },
@@ -29,7 +30,7 @@ export const metricsApi = {
       const response = await api.get(`/metrics/${id}`);
       return response.data.metric;
     } catch (error) {
-      console.error('Error fetching metric:', error);
+      logger.error('Error fetching metric', { id, error: String(error) });
       throw error;
     }
   },
@@ -40,7 +41,7 @@ export const metricsApi = {
       const response = await api.post('/metrics', metric);
       return response.data.metric;
     } catch (error) {
-      console.error('Error creating metric:', error);
+      logger.error('Error creating metric', { error: String(error) });
       throw error;
     }
   },
@@ -51,7 +52,7 @@ export const metricsApi = {
       const response = await api.put(`/metrics/${id}`, metric);
       return response.data;
     } catch (error) {
-      console.error('Error updating metric:', error);
+      logger.error('Error updating metric', { id, error: String(error) });
       throw error;
     }
   },
@@ -62,7 +63,7 @@ export const metricsApi = {
       const response = await api.delete(`/metrics/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error archiving metric:', error);
+      logger.error('Error archiving metric', { id, error: String(error) });
       throw error;
     }
   },
@@ -73,7 +74,7 @@ export const metricsApi = {
       const response = await api.post(`/metrics/${id}/increment`, { value });
       return response.data.metric;
     } catch (error) {
-      console.error('Error incrementing metric:', error);
+      logger.error('Error incrementing metric', { id, error: String(error) });
       throw error;
     }
   },
@@ -84,7 +85,7 @@ export const metricsApi = {
       const response = await api.post(`/metrics/${id}/reset`);
       return response.data.metric;
     } catch (error) {
-      console.error('Error resetting metric:', error);
+      logger.error('Error resetting metric', { id, error: String(error) });
       throw error;
     }
   },
@@ -95,7 +96,7 @@ export const metricsApi = {
       const response = await api.get(`/metrics/${id}/logs`);
       return response.data.logs;
     } catch (error) {
-      console.error('Error fetching metric logs:', error);
+      logger.error('Error fetching metric logs', { id, error: String(error) });
       throw error;
     }
   },
@@ -106,7 +107,7 @@ export const metricsApi = {
       const response = await api.post('/sync', { metrics });
       return response.data;
     } catch (error) {
-      console.error('Error syncing metrics:', error);
+      logger.error('Error syncing metrics', { error: String(error) });
       throw error;
     }
   },

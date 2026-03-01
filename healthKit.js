@@ -7,11 +7,11 @@ import { logger } from './logger';
 
 const mockMetricsApi = {
   increment: (id, value) => {
-    console.log(`Mock incrementing metric ${id} with value ${value}`);
+    logger.info('Mock incrementing metric', { id, value });
     return Promise.resolve({ id, value });
   },
   update: (id, data) => {
-    console.log(`Mock updating metric ${id} with data ${JSON.stringify(data)}`);
+    logger.info('Mock updating metric', { id, data });
     return Promise.resolve({ id, data });
   },
 };
@@ -78,18 +78,18 @@ const getMindfulMinutes = (session) => {
 export const initHealthKit = () => {
   return new Promise((resolve) => {
     if (Platform.OS !== 'ios') {
-      console.log('HealthKit is only available on iOS');
+      logger.info('HealthKit is only available on iOS');
       resolve(false);
       return;
     }
 
     AppleHealthKit.initHealthKit(healthKitPermissions, (error) => {
       if (error) {
-        console.log('HealthKit initialization error:', error);
+        logger.error('HealthKit initialization error', { error: String(error) });
         resolve(false);
         return;
       }
-      console.log('HealthKit initialized successfully');
+      logger.info('HealthKit initialized successfully');
       resolve(true);
     });
   });
@@ -117,7 +117,7 @@ export const getRunningWorkouts = (startDate, endDate = new Date()) => {
 
     AppleHealthKit.getSamples(options, (error, results) => {
       if (error) {
-        console.log('Error fetching workouts:', error);
+        logger.error('Error fetching workouts', { error: String(error) });
         reject(error);
         return;
       }
@@ -127,7 +127,7 @@ export const getRunningWorkouts = (startDate, endDate = new Date()) => {
         (workout) => workout.activityName === 'Running'
       );
 
-      console.log(`Found ${runningWorkouts.length} running workouts`);
+      logger.info('Found running workouts', { count: runningWorkouts.length });
       resolve(runningWorkouts);
     });
   });
@@ -153,13 +153,11 @@ export const getMindfulSessions = (startDate, endDate = new Date()) => {
 
     AppleHealthKit.getMindfulSession(options, (error, results) => {
       if (error) {
-        console.log('Error fetching mindful sessions:', error);
+        logger.error('Error fetching mindful sessions', { error: String(error) });
         reject(error);
         return;
       }
-      console.log('Mindful sessions:', results);
-
-      console.log(`Found ${(results || []).length} mindful sessions`);
+      logger.info('Found mindful sessions', { count: (results || []).length });
       resolve(results || []);
     });
   });
@@ -254,7 +252,7 @@ export const syncWorkouts = async (metrics) => {
   // 1. Initialize HealthKit (requests permission if needed)
   const initialized = await initHealthKit();
   if (!initialized) {
-    console.log('HealthKit not initialized or permission denied');
+    logger.warn('HealthKit not initialized or permission denied');
     return { synced: false, results: {} };
   }
 
@@ -270,7 +268,7 @@ export const syncWorkouts = async (metrics) => {
     startDate.setDate(startDate.getDate() - 30);
   }
 
-  console.log(`Querying health data since: ${startDate.toISOString()}`);
+  logger.info('Querying health data', { since: startDate.toISOString() });
 
   const results = {
     running: { logged: 0, total: 0 },
@@ -293,9 +291,9 @@ export const syncWorkouts = async (metrics) => {
           results.running.total += distanceKm;
         }
       }
-      console.log(`Running: ${results.running.logged} workouts, ${results.running.total} km`);
+      logger.info('Running sync complete', { logged: results.running.logged, totalKm: results.running.total });
     } catch (error) {
-      console.error('Error syncing running:', error);
+      logger.error('Error syncing running', { error: String(error) });
     }
   }
 
@@ -311,9 +309,9 @@ export const syncWorkouts = async (metrics) => {
         results.mindful.logged++;
         results.mindful.total += minutes;
       }
-      console.log(`Mindful: ${results.mindful.logged} sessions, ${results.mindful.total} mins`);
+      logger.info('Mindful sync complete', { logged: results.mindful.logged, totalMins: results.mindful.total });
     } catch (error) {
-      console.error('Error syncing mindful sessions:', error);
+      logger.error('Error syncing mindful sessions', { error: String(error) });
     }
   }
 
@@ -406,7 +404,7 @@ export const syncWorkouts = async (metrics) => {
   await storage.setLastHealthSyncTime();
 
   const totalLogged = results.running.logged + results.mindful.logged;
-  console.log(`Health sync complete: ${totalLogged} items synced`);
+  logger.info('Health sync complete', { itemsSynced: totalLogged, distanceKm: results.running.total });
 
   return { synced: true, workoutsLogged: totalLogged, distanceKm: results.running.total, results };
 };
