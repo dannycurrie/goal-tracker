@@ -89,12 +89,16 @@ app.put('/api/metrics/:id', async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // if value is changed, log the entry
+  // Fetch the current metric first, then log the change, then update.
+  // All three steps are sequenced inside the callback to avoid a race condition
+  // where updateMetric could complete before getMetricById returns, causing the
+  // old-vs-new value comparison to see equal values and skip writing the log entry.
   dbHelpers.getMetricById(id, (err, metric) => {
     if (err) {
       logger.error('Error fetching metric for update', { id, error: String(err) });
       return res.status(500).json({ error: 'Failed to fetch metric' });
     }
+
     if (metric.current_value !== currentValue) {
       // For check-in metrics, log the actual value (rating)
       // For other metrics, log the diff
@@ -103,21 +107,21 @@ app.put('/api/metrics/:id', async (req, res) => {
         : (currentValue - (metric.current_value || 0));
 
       if (valueToLog !== 0 || metric.type === 'checkin') {
-        dbHelpers.logMetricEntry(id, valueToLog, null, (err) => {
-          if (err) {
-            logger.error('Error logging metric entry', { metricId: id, error: String(err) });
+        dbHelpers.logMetricEntry(id, valueToLog, null, (logErr) => {
+          if (logErr) {
+            logger.error('Error logging metric entry', { metricId: id, error: String(logErr) });
           }
         });
       }
     }
-  });
 
-  dbHelpers.updateMetric(id, req.body, (err) => {
-    if (err) {
-      logger.error('Error updating metric', { id, error: String(err) });
-      return res.status(500).json({ error: 'Failed to update metric' });
-    }
-    res.json({ message: 'Metric updated successfully', id: parseInt(id) });
+    dbHelpers.updateMetric(id, req.body, (updateErr) => {
+      if (updateErr) {
+        logger.error('Error updating metric', { id, error: String(updateErr) });
+        return res.status(500).json({ error: 'Failed to update metric' });
+      }
+      res.json({ message: 'Metric updated successfully', id: parseInt(id) });
+    });
   });
 });
 
