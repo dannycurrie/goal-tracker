@@ -14,7 +14,7 @@ export const storage = {
     try {
       await AsyncStorage.setItem(KEYS.METRICS, JSON.stringify(metrics));
     } catch (error) {
-      logger.error('Failed to save metrics to storage', { error: String(error) });
+      logger.error('Failed to save metrics to storage', { error });
     }
   },
 
@@ -23,7 +23,7 @@ export const storage = {
       const data = await AsyncStorage.getItem(KEYS.METRICS);
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      logger.error('Failed to load metrics from storage', { error: String(error) });
+      logger.error('Failed to load metrics from storage', { error });
       return null;
     }
   },
@@ -33,7 +33,7 @@ export const storage = {
     try {
       await AsyncStorage.setItem(KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
     } catch (error) {
-      logger.error('Failed to save offline queue', { error: String(error) });
+      logger.error('Failed to save offline queue', { error });
     }
   },
 
@@ -42,7 +42,7 @@ export const storage = {
       const data = await AsyncStorage.getItem(KEYS.OFFLINE_QUEUE);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      logger.error('Failed to load offline queue', { error: String(error) });
+      logger.error('Failed to load offline queue', { error });
       return [];
     }
   },
@@ -52,7 +52,7 @@ export const storage = {
     try {
       await AsyncStorage.setItem(KEYS.LAST_SYNC, new Date().toISOString());
     } catch (error) {
-      logger.error('Failed to save last sync time', { error: String(error) });
+      logger.error('Failed to save last sync time', { error });
     }
   },
 
@@ -60,7 +60,7 @@ export const storage = {
     try {
       return await AsyncStorage.getItem(KEYS.LAST_SYNC);
     } catch (error) {
-      logger.error('Failed to get last sync time', { error: String(error) });
+      logger.error('Failed to get last sync time', { error });
       return null;
     }
   },
@@ -70,7 +70,7 @@ export const storage = {
     try {
       await AsyncStorage.setItem(KEYS.LAST_HEALTH_SYNC, new Date().toISOString());
     } catch (error) {
-      logger.error('Failed to save last health sync time', { error: String(error) });
+      logger.error('Failed to save last health sync time', { error });
     }
   },
 
@@ -78,7 +78,7 @@ export const storage = {
     try {
       return await AsyncStorage.getItem(KEYS.LAST_HEALTH_SYNC);
     } catch (error) {
-      logger.error('Failed to get last health sync time', { error: String(error) });
+      logger.error('Failed to get last health sync time', { error });
       return null;
     }
   },

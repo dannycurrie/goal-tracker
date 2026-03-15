@@ -19,7 +19,7 @@ export const metricsApi = {
       const response = await api.get('/metrics');
       return response.data.metrics;
     } catch (error) {
-        logger.error('Error fetching metrics', { error: String(error) });
+        logger.error('Error fetching metrics', { error });
       throw error;
     }
   },
@@ -30,7 +30,7 @@ export const metricsApi = {
       const response = await api.get(`/metrics/${id}`);
       return response.data.metric;
     } catch (error) {
-      logger.error('Error fetching metric', { id, error: String(error) });
+      logger.error('Error fetching metric', { id, error });
       throw error;
     }
   },
@@ -41,7 +41,7 @@ export const metricsApi = {
       const response = await api.post('/metrics', metric);
       return response.data.metric;
     } catch (error) {
-      logger.error('Error creating metric', { error: String(error) });
+      logger.error('Error creating metric', { error });
       throw error;
     }
   },
@@ -52,7 +52,7 @@ export const metricsApi = {
       const response = await api.put(`/metrics/${id}`, metric);
       return response.data;
     } catch (error) {
-      logger.error('Error updating metric', { id, error: String(error) });
+      logger.error('Error updating metric', { id, error });
       throw error;
     }
   },
@@ -63,7 +63,7 @@ export const metricsApi = {
       const response = await api.delete(`/metrics/${id}`);
       return response.data;
     } catch (error) {
-      logger.error('Error archiving metric', { id, error: String(error) });
+      logger.error('Error archiving metric', { id, error });
       throw error;
     }
   },
@@ -74,7 +74,7 @@ export const metricsApi = {
       const response = await api.post(`/metrics/${id}/increment`, { value });
       return response.data.metric;
     } catch (error) {
-      logger.error('Error incrementing metric', { id, error: String(error) });
+      logger.error('Error incrementing metric', { id, error });
       throw error;
     }
   },
@@ -85,7 +85,7 @@ export const metricsApi = {
       const response = await api.post(`/metrics/${id}/reset`);
       return response.data.metric;
     } catch (error) {
-      logger.error('Error resetting metric', { id, error: String(error) });
+      logger.error('Error resetting metric', { id, error });
       throw error;
     }
   },
@@ -96,7 +96,7 @@ export const metricsApi = {
       const response = await api.get(`/metrics/${id}/logs`);
       return response.data.logs;
     } catch (error) {
-      logger.error('Error fetching metric logs', { id, error: String(error) });
+      logger.error('Error fetching metric logs', { id, error });
       throw error;
     }
   },
@@ -107,7 +107,7 @@ export const metricsApi = {
       const response = await api.post('/sync', { metrics });
       return response.data;
     } catch (error) {
-      logger.error('Error syncing metrics', { error: String(error) });
+      logger.error('Error syncing metrics', { error });
       throw error;
     }
   },

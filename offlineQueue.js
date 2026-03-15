@@ -57,7 +57,7 @@ export const offlineQueue = {
           logger.info('Skipping operation for deleted metric', { metricId: op.metricId, opId: op.id });
           processed++;
         } else {
-          logger.error('Failed to process offline operation', { opId: op.id, type: op.type, metricId: op.metricId, error: String(error) });
+          logger.error('Failed to process offline operation', { opId: op.id, type: op.type, metricId: op.metricId, error });
           remainingQueue.push(op);
           failed++;
         }

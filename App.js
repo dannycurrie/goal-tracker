@@ -83,7 +83,7 @@ function App() {
         await syncHealthData(loadedMetrics);
       }
     } catch (error) {
-      logger.error('Sync failed', { error: String(error) });
+      logger.error('Sync failed', { error });
     } finally {
       setIsSyncing(false);
     }
@@ -98,7 +98,7 @@ function App() {
         await loadMetrics();
       }
     } catch (error) {
-      logger.error('Health sync failed', { error: String(error) });
+      logger.error('Health sync failed', { error });
       // Fail silently - health sync is not critical
     }
   };
@@ -128,7 +128,7 @@ function App() {
       await storage.saveMetrics(formattedMetrics);
       return formattedMetrics;
     } catch (error) {
-      logger.error('Failed to load metrics', { error: String(error) });
+      logger.error('Failed to load metrics', { error });
       // Keep current metrics on error - don't overwrite with empty array
       return null;
     } finally {
@@ -170,7 +170,7 @@ function App() {
           try {
             await metricsApi.reset(metric.id);
           } catch (error) {
-            logger.error('Failed to reset metric', { metricId: metric.id, error: String(error) });
+            logger.error('Failed to reset metric', { metricId: metric.id, error });
           }
         } else {
           await offlineQueue.add(OP_TYPES.RESET, metric.id);
@@ -222,7 +222,7 @@ function App() {
         );
         await updateMetricsWithCache(updatedMetrics);
       } catch (error) {
-        logger.error('Failed to create metric', { error: String(error) });
+        logger.error('Failed to create metric', { error });
         // Revert on error
         await updateMetricsWithCache(metrics);
         alert('Failed to create metric. Please try again.');
@@ -246,7 +246,7 @@ function App() {
       try {
         await metricsApi.increment(metricId);
       } catch (error) {
-        logger.error('Failed to increment metric', { metricId, error: String(error) });
+        logger.error('Failed to increment metric', { metricId, error });
         // Revert on error
         await updateMetricsWithCache(metrics);
         alert('Failed to update metric. Please try again.');
@@ -270,7 +270,7 @@ function App() {
       try {
         await metricsApi.increment(metricId, amount);
       } catch (error) {
-        logger.error('Failed to add value', { metricId, amount, error: String(error) });
+        logger.error('Failed to add value', { metricId, amount, error });
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to add value. Please try again.');
       }
@@ -298,7 +298,7 @@ function App() {
       try {
         await metricsApi.update(updatedMetric.id, updatedMetric);
       } catch (error) {
-        logger.error('Failed to update metric', { metricId: updatedMetric.id, error: String(error) });
+        logger.error('Failed to update metric', { metricId: updatedMetric.id, error });
         // Revert on error
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to save changes. Please try again.');
@@ -323,7 +323,7 @@ function App() {
       try {
         await metricsApi.archive(metricId);
       } catch (error) {
-        logger.error('Failed to archive metric', { metricId, error: String(error) });
+        logger.error('Failed to archive metric', { metricId, error });
         // Revert on error
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to archive metric. Please try again.');
@@ -378,7 +378,7 @@ function App() {
         try {
           await metricsApi.update(metricId, updatedMetric);
         } catch (error) {
-          logger.error('Failed to save timer', { metricId, error: String(error) });
+          logger.error('Failed to save timer', { metricId, error });
           // Keep local changes, will sync later
         }
       } else {
@@ -419,7 +419,7 @@ function App() {
         // Recalculate averages
         await calculateCheckInAverages();
       } catch (error) {
-        logger.error('Failed to save check-in', { metricId: checkInMetric.id, error: String(error) });
+        logger.error('Failed to save check-in', { metricId: checkInMetric.id, error });
         // Keep local changes, will sync later
       }
     } else {
@@ -459,7 +459,7 @@ function App() {
       try {
         await metricsApi.update(metric.id, updatedMetric);
       } catch (error) {
-        logger.error('Failed to toggle task', { metricId: metric.id, error: String(error) });
+        logger.error('Failed to toggle task', { metricId: metric.id, error });
         await updateMetricsWithCache(previousMetrics);
         alert('Failed to update task. Please try again.');
       }
@@ -498,7 +498,7 @@ function App() {
           averages[metric.id] = '-';
         }
       } catch (error) {
-        logger.error('Failed to fetch logs for metric', { metricId: metric.id, error: String(error) });
+        logger.error('Failed to fetch logs for metric', { metricId: metric.id, error });
         averages[metric.id] = '-';
       }
     }

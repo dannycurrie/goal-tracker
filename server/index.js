@@ -29,7 +29,7 @@ app.get('/health', (req, res) => {
 app.get('/api/metrics', (req, res) => {
   dbHelpers.getAllMetrics((err, metrics) => {
     if (err) {
-      logger.error('Error fetching metrics', { error: String(err) });
+      logger.error('Error fetching metrics', { error: err });
       return res.status(500).json({ error: 'Failed to fetch metrics' });
     }
     res.json({ metrics });
@@ -42,7 +42,7 @@ app.get('/api/metrics/:id', (req, res) => {
 
   dbHelpers.getMetricById(id, (err, metric) => {
     if (err) {
-      logger.error('Error fetching metric', { id, error: String(err) });
+      logger.error('Error fetching metric', { id, error: err });
       return res.status(500).json({ error: 'Failed to fetch metric' });
     }
     if (!metric) {
@@ -72,7 +72,7 @@ app.post('/api/metrics', (req, res) => {
 
   dbHelpers.createMetric(req.body, (err, metric) => {
     if (err) {
-      logger.error('Error creating metric', { error: String(err) });
+      logger.error('Error creating metric', { error: err });
       return res.status(500).json({ error: 'Failed to create metric' });
     }
     res.status(201).json({ metric });
@@ -95,7 +95,7 @@ app.put('/api/metrics/:id', async (req, res) => {
   // old-vs-new value comparison to see equal values and skip writing the log entry.
   dbHelpers.getMetricById(id, (err, metric) => {
     if (err) {
-      logger.error('Error fetching metric for update', { id, error: String(err) });
+      logger.error('Error fetching metric for update', { id, error: err });
       return res.status(500).json({ error: 'Failed to fetch metric' });
     }
 
@@ -109,7 +109,7 @@ app.put('/api/metrics/:id', async (req, res) => {
       if (valueToLog !== 0 || metric.type === 'checkin') {
         dbHelpers.logMetricEntry(id, valueToLog, null, (logErr) => {
           if (logErr) {
-            logger.error('Error logging metric entry', { metricId: id, error: String(logErr) });
+            logger.error('Error logging metric entry', { metricId: id, error: logErr });
           }
         });
       }
@@ -117,7 +117,7 @@ app.put('/api/metrics/:id', async (req, res) => {
 
     dbHelpers.updateMetric(id, req.body, (updateErr) => {
       if (updateErr) {
-        logger.error('Error updating metric', { id, error: String(updateErr) });
+        logger.error('Error updating metric', { id, error: updateErr });
         return res.status(500).json({ error: 'Failed to update metric' });
       }
       res.json({ message: 'Metric updated successfully', id: parseInt(id) });
@@ -131,7 +131,7 @@ app.delete('/api/metrics/:id', (req, res) => {
 
   dbHelpers.archiveMetric(id, (err) => {
     if (err) {
-      logger.error('Error archiving metric', { id, error: String(err) });
+      logger.error('Error archiving metric', { id, error: err });
       return res.status(500).json({ error: 'Failed to archive metric' });
     }
     res.json({ message: 'Metric archived successfully', id: parseInt(id) });
@@ -145,20 +145,20 @@ app.post('/api/metrics/:id/increment', (req, res) => {
 
   dbHelpers.incrementMetric(id, value, (err) => {
     if (err) {
-      logger.error('Error incrementing metric', { id, error: String(err) });
+      logger.error('Error incrementing metric', { id, error: err });
       return res.status(500).json({ error: 'Failed to increment metric' });
     }
 
     // Also log the entry
     dbHelpers.logMetricEntry(id, value, null, (logErr) => {
       if (logErr) {
-        logger.error('Error logging metric entry on increment', { metricId: id, error: String(logErr) });
+        logger.error('Error logging metric entry on increment', { metricId: id, error: logErr });
       }
 
       // Get updated metric
       dbHelpers.getMetricById(id, (getErr, metric) => {
         if (getErr) {
-          logger.error('Error fetching metric after increment', { id, error: String(getErr) });
+          logger.error('Error fetching metric after increment', { id, error: getErr });
           return res.status(500).json({ error: 'Metric incremented but failed to fetch updated data' });
         }
         res.json({ metric });
@@ -173,7 +173,7 @@ app.post('/api/metrics/:id/reset', (req, res) => {
 
   dbHelpers.resetMetric(id, (err, metric) => {
     if (err) {
-      logger.error('Error resetting metric', { id, error: String(err) });
+      logger.error('Error resetting metric', { id, error: err });
       return res.status(500).json({ error: 'Failed to reset metric' });
     }
     res.json({ metric, message: 'Metric reset successfully' });
@@ -188,7 +188,7 @@ app.get('/api/metrics/:id/logs', (req, res) => {
 
   dbHelpers.getMetricLogs(id, (err, logs) => {
     if (err) {
-      logger.error('Error fetching metric logs', { metricId: id, error: String(err) });
+      logger.error('Error fetching metric logs', { metricId: id, error: err });
       return res.status(500).json({ error: 'Failed to fetch metric logs' });
     }
     res.json({ logs });
@@ -207,7 +207,7 @@ app.post('/api/metrics/:id/log', (req, res) => {
   // Get current metric to update its value
   dbHelpers.getMetricById(id, (err, metric) => {
     if (err) {
-      logger.error('Error fetching metric for log', { id, error: String(err) });
+      logger.error('Error fetching metric for log', { id, error: err });
       return res.status(500).json({ error: 'Failed to fetch metric' });
     }
     if (!metric) {
@@ -217,7 +217,7 @@ app.post('/api/metrics/:id/log', (req, res) => {
     // Log the entry (with optional externalId)
     dbHelpers.logMetricEntry(id, value, externalId, (logErr, logResult) => {
       if (logErr) {
-        logger.error('Error logging metric entry', { metricId: id, error: String(logErr) });
+        logger.error('Error logging metric entry', { metricId: id, error: logErr });
         return res.status(500).json({ error: 'Failed to log metric entry' });
       }
 
@@ -242,7 +242,7 @@ app.post('/api/metrics/:id/log', (req, res) => {
         type: metric.type
       }, (updateErr) => {
         if (updateErr) {
-          logger.error('Error updating metric value after log', { metricId: id, error: String(updateErr) });
+          logger.error('Error updating metric value after log', { metricId: id, error: updateErr });
           // Log was created but value update failed - still return success
         }
 
@@ -268,7 +268,7 @@ app.get('/api/metrics/:id/total', (req, res) => {
 
   dbHelpers.getMetricTotal(id, dateFrom, dateTo, (err, result) => {
     if (err) {
-      logger.error('Error fetching metric total', { metricId: id, error: String(err) });
+      logger.error('Error fetching metric total', { metricId: id, error: err });
       if (err.message === 'Metric not found') {
         return res.status(404).json({ error: 'Metric not found' });
       }
@@ -340,7 +340,7 @@ app.post('/api/sync', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  logger.error('Unhandled server error', { error: String(err), stack: err?.stack, method: req.method, path: req.path });
+  logger.error('Unhandled server error', { error: err, stack: err?.stack, method: req.method, path: req.path });
   res.status(500).json({ error: 'Internal server error' });
 });
 

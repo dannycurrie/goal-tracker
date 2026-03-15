@@ -85,7 +85,7 @@ export const initHealthKit = () => {
 
     AppleHealthKit.initHealthKit(healthKitPermissions, (error) => {
       if (error) {
-        logger.error('HealthKit initialization error', { error: String(error) });
+        logger.error('HealthKit initialization error', { error });
         resolve(false);
         return;
       }
@@ -117,7 +117,7 @@ export const getRunningWorkouts = (startDate, endDate = new Date()) => {
 
     AppleHealthKit.getSamples(options, (error, results) => {
       if (error) {
-        logger.error('Error fetching workouts', { error: String(error) });
+        logger.error('Error fetching workouts', { error });
         reject(error);
         return;
       }
@@ -153,7 +153,7 @@ export const getMindfulSessions = (startDate, endDate = new Date()) => {
 
     AppleHealthKit.getMindfulSession(options, (error, results) => {
       if (error) {
-        logger.error('Error fetching mindful sessions', { error: String(error) });
+        logger.error('Error fetching mindful sessions', { error });
         reject(error);
         return;
       }
@@ -183,7 +183,7 @@ export const getSleepSamples = (startDate, endDate = new Date()) => {
 
     AppleHealthKit.getSleepSamples(options, (error, results) => {
       if (error) {
-        logger.error('Error fetching sleep data', { error: String(error) });
+        logger.error('Error fetching sleep data', { error });
         reject(error);
         return;
       }
@@ -293,7 +293,7 @@ export const syncWorkouts = async (metrics) => {
       }
       logger.info('Running sync complete', { logged: results.running.logged, totalKm: results.running.total });
     } catch (error) {
-      logger.error('Error syncing running', { error: String(error) });
+      logger.error('Error syncing running', { error });
     }
   }
 
@@ -311,7 +311,7 @@ export const syncWorkouts = async (metrics) => {
       }
       logger.info('Mindful sync complete', { logged: results.mindful.logged, totalMins: results.mindful.total });
     } catch (error) {
-      logger.error('Error syncing mindful sessions', { error: String(error) });
+      logger.error('Error syncing mindful sessions', { error });
     }
   }
 
@@ -396,7 +396,7 @@ export const syncWorkouts = async (metrics) => {
         results.earlyRise.days = earlyDays;
       }
     } catch (error) {
-      logger.error('Error syncing sleep data', { error: String(error), stack: error?.stack });
+      logger.error('Error syncing sleep data', { error, stack: error?.stack });
     }
   }
 
