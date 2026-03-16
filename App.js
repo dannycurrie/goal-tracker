@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, AppState } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Linking } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, AppState, Linking } from 'react-native';
 import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal, AppleHealthScreen, ExerciseChecklistScreen } from './components';
 import { needsReset } from './components/utils';
@@ -606,6 +607,9 @@ function App() {
           <Text style={styles.navTitle}>TRACKER</Text>
           {!isOnline && <Text style={styles.offlineIndicator}>OFFLINE</Text>}
           {isSyncing && <Text style={styles.syncingIndicator}>SYNCING...</Text>}
+          <TouchableOpacity onPress={() => Linking.openURL('https://goal-tracker-rw7i.vercel.app/')} style={styles.dashboardLink}>
+            <Text style={styles.dashboardLinkText}>📈 Dashboard</Text>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.navButton} onPress={() => setShowExerciseChecklist(true)}>
           <Text style={styles.navIcon}>✅</Text>
@@ -730,5 +734,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
+  },
+  dashboardLink: {
+    marginTop: 4,
+  },
+  dashboardLinkText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    opacity: 0.85,
   },
 });
