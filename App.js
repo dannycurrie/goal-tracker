@@ -1,6 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, AppState, Linking } from 'react-native';
 import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal, AppleHealthScreen, ExerciseChecklistScreen } from './components';
