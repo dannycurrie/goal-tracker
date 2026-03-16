@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Linking } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, AppState, Linking } from 'react-native';
 import { metricsApi } from './api';
 import { MetricCircle, AddButton, AddMetricModal, EditMetricModal, CheckInModal, AppleHealthScreen, ExerciseChecklistScreen } from './components';
 import { needsReset } from './components/utils';
@@ -31,7 +32,9 @@ function App() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInMetric, setCheckInMetric] = useState(null);
   const [metricAverages, setMetricAverages] = useState({});
-  const [hasCheckedResets, setHasCheckedResets] = useState(false);
+  // Tracks the calendar date (toDateString()) on which we last ran the reset check.
+  // Using a ref avoids triggering re-renders when updated.
+  const lastResetCheckDateRef = useRef(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAppleHealthScreen, setShowAppleHealthScreen] = useState(false);
   const [showExerciseChecklist, setShowExerciseChecklist] = useState(false);
@@ -527,13 +530,34 @@ function App() {
     }
   }, [metrics]);
 
-  // Check and reset metrics on app load (once)
+  // Run reset check whenever metrics change, but at most once per calendar day.
+  // Using the date string (not a boolean flag) means the check re-runs automatically
+  // when the day rolls over, even if the app stays open across the boundary.
   useEffect(() => {
-    if (metrics.length > 0 && !loading && !hasCheckedResets) {
-      setHasCheckedResets(true);
-      checkAndResetMetrics();
+    if (metrics.length > 0 && !loading) {
+      const today = new Date().toDateString();
+      if (lastResetCheckDateRef.current !== today) {
+        lastResetCheckDateRef.current = today;
+        checkAndResetMetrics();
+      }
     }
-  }, [metrics, loading, hasCheckedResets]);
+  }, [metrics, loading]);
+
+  // Re-check resets (and sync with server) whenever the app comes back to the
+  // foreground. This catches the case where the user backgrounds the app over a
+  // period boundary and reopens it without a full restart.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        if (isOnline) {
+          syncWithServer();
+        } else {
+          checkAndResetMetrics();
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [isOnline]);
 
   // Filter out archived metrics, apple_health source metrics, and task metrics (shown in separate screens)
   const activeMetrics = metrics.filter(m => !m.archived && m.source !== 'apple_health' && m.type !== 'task');
