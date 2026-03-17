@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../theme';
 
 const AddButton = ({ onPress }) => {
   return (
@@ -32,8 +33,8 @@ const styles = StyleSheet.create({
     height: 140,
     borderRadius: 70,
     borderWidth: 8,
-    borderColor: '#1E5C35',
-    backgroundColor: '#5DB87A',
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#8FD4A5',
+    backgroundColor: colors.iconCircle,
     justifyContent: 'center',
     alignItems: 'center',
   },

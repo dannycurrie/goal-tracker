@@ -7,6 +7,7 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { colors } from '../theme';
 
 const AppleHealthScreen = ({
   visible,
@@ -89,7 +90,7 @@ const AppleHealthScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5DB87A',
+    backgroundColor: colors.primary,
   },
   header: {
     flexDirection: 'row',
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#8FD4A5',
+    backgroundColor: colors.iconCircle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1E5C35',
+    color: colors.primaryDark,
   },
   metricTitle: {
     marginTop: 15,

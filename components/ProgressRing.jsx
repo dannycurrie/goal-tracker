@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { Svg, Circle } from 'react-native-svg';
+import { colors } from '../theme';
 
 const ProgressRing = ({ progress, size = 140, strokeWidth = 8 }) => {
   const radius = (size - strokeWidth) / 2;
@@ -13,7 +14,7 @@ const ProgressRing = ({ progress, size = 140, strokeWidth = 8 }) => {
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke="#1E5C35"
+        stroke={colors.primaryDark}
         strokeWidth={strokeWidth}
         fill="transparent"
       />
@@ -22,7 +23,7 @@ const ProgressRing = ({ progress, size = 140, strokeWidth = 8 }) => {
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke="#FFFFFF"
+        stroke={colors.white}
         strokeWidth={strokeWidth}
         fill="transparent"
         strokeDasharray={circumference}

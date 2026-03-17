@@ -9,6 +9,7 @@ import { useNetworkStatus } from './networkStatus';
 import { offlineQueue, OP_TYPES } from './offlineQueue';
 import { syncWorkouts } from './healthKit';
 import { logger } from './logger';
+import { colors } from './theme';
 
 /**
    *
@@ -665,7 +666,7 @@ export default App;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5DB87A',
+    backgroundColor: colors.primary,
   },
   scrollContent: {
     paddingTop: 80,
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 30,
     paddingBottom: 40,
-    backgroundColor: '#5DB87A',
+    backgroundColor: colors.primary,
   },
   navButton: {
     width: 40,
@@ -713,13 +714,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   offlineIndicator: {
-    color: '#C8F0D4',
+    color: colors.offlineText,
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: 2,
   },
   syncingIndicator: {
-    color: '#90EE90',
+    color: colors.syncingText,
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: 2,

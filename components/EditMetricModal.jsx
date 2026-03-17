@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { colors } from '../theme';
 
 const EditMetricModal = ({ visible, onClose, onSave, onArchive, onAddValue, metric }) => {
   const [unit, setUnit] = useState('');
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E5C35',
+    color: colors.primaryDark,
     marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 1,
@@ -242,7 +243,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1E5C35',
+    color: colors.primaryDark,
     marginBottom: 8,
     letterSpacing: 0.5,
   },
@@ -266,12 +267,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeframeButtonActive: {
-    backgroundColor: '#5DB87A',
+    backgroundColor: colors.primary,
   },
   timeframeText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1E5C35',
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   timeframeTextActive: {
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   typeValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E5C35',
+    color: colors.primaryDark,
     marginBottom: 4,
   },
   typeHint: {
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   addValueButton: {
-    backgroundColor: '#5DB87A',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     paddingHorizontal: 25,
@@ -342,13 +343,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E5C35',
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   saveButton: {
     flex: 1,
     padding: 15,
-    backgroundColor: '#5DB87A',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     marginLeft: 10,
     alignItems: 'center',
