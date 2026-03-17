@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { colors } from '../theme';
 
 const AddMetricModal = ({ visible, onClose, onSave }) => {
   const [unit, setUnit] = useState('');
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 1,
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     marginBottom: 8,
     letterSpacing: 0.5,
   },
@@ -229,12 +230,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeframeButtonActive: {
-    backgroundColor: '#FF7F5C',
+    backgroundColor: colors.primary,
   },
   timeframeText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   timeframeTextActive: {
@@ -253,12 +254,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   typeButtonActive: {
-    backgroundColor: '#FF7F5C',
+    backgroundColor: colors.primary,
   },
   typeText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   typeTextActive: {
@@ -285,13 +286,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   saveButton: {
     flex: 1,
     padding: 15,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     marginLeft: 10,
     alignItems: 'center',

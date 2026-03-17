@@ -6,6 +6,7 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { colors } from '../theme';
 
 const ExerciseChecklistScreen = ({
   visible,
@@ -61,7 +62,7 @@ const ExerciseChecklistScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: colors.primary,
   },
   header: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { colors } from '../theme';
 
 const CheckInModal = ({ visible, metric, onClose, onSave }) => {
   const [value, setValue] = useState(3); // Default to middle value
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     marginBottom: 20,
     textAlign: 'center',
     letterSpacing: 1,
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   valueDisplay: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#FF7F5C',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ratingButtonActive: {
-    backgroundColor: '#FF7F5C',
+    backgroundColor: colors.primary,
   },
   ratingButtonText: {
     fontSize: 20,
@@ -139,13 +140,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   saveButton: {
     flex: 1,
     padding: 15,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     marginLeft: 10,
     alignItems: 'center',

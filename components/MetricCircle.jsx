@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import ProgressRing from './ProgressRing';
+import { colors } from '../theme';
 
 const MetricCircle = ({ metric, isTimerRunning, timerElapsed, averageValue, onPress, onDoublePress }) => {
   // No progress for check-in metrics
@@ -93,20 +94,20 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#FF9D85',
+    backgroundColor: colors.iconCircle,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconContainerActive: {
     borderWidth: 3,
-    borderColor: '#FFD700',
-    shadowColor: '#FFD700',
+    borderColor: colors.timerGlow,
+    shadowColor: colors.timerGlow,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 10,
   },
   iconContainerCheckin: {
-    backgroundColor: '#FFA07A',
+    backgroundColor: colors.iconCircleCheckin,
   },
   icon: {
     fontSize: 50,
