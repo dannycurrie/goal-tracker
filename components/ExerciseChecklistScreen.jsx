@@ -61,7 +61,7 @@ const ExerciseChecklistScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   header: {
     flexDirection: 'row',

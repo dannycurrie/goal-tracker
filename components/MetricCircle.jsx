@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#FF9D85',
+    backgroundColor: '#8FD4A5',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   iconContainerCheckin: {
-    backgroundColor: '#FFA07A',
+    backgroundColor: '#7EC89A',
   },
   icon: {
     fontSize: 50,

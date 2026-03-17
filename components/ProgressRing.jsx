@@ -13,7 +13,7 @@ const ProgressRing = ({ progress, size = 140, strokeWidth = 8 }) => {
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke="#5A4A42"
+        stroke="#1E5C35"
         strokeWidth={strokeWidth}
         fill="transparent"
       />

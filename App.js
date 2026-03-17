@@ -665,7 +665,7 @@ export default App;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   scrollContent: {
     paddingTop: 80,
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 30,
     paddingBottom: 40,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   navButton: {
     width: 40,
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   offlineIndicator: {
-    color: '#FFE4B5',
+    color: '#C8F0D4',
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: 2,

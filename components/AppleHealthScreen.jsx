@@ -89,7 +89,7 @@ const AppleHealthScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   header: {
     flexDirection: 'row',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#FF9D85',
+    backgroundColor: '#8FD4A5',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
   },
   metricTitle: {
     marginTop: 15,

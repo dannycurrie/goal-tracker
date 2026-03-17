@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     marginBottom: 20,
     textAlign: 'center',
     letterSpacing: 1,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   valueDisplay: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#FF7F5C',
+    color: '#5DB87A',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ratingButtonActive: {
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   ratingButtonText: {
     fontSize: 20,
@@ -139,13 +139,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     letterSpacing: 0.5,
   },
   saveButton: {
     flex: 1,
     padding: 15,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
     borderRadius: 10,
     marginLeft: 10,
     alignItems: 'center',

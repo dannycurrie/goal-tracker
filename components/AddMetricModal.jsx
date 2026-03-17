@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 1,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     marginBottom: 8,
     letterSpacing: 0.5,
   },
@@ -229,12 +229,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeframeButtonActive: {
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   timeframeText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     letterSpacing: 0.5,
   },
   timeframeTextActive: {
@@ -253,12 +253,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   typeButtonActive: {
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
   },
   typeText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     letterSpacing: 0.5,
   },
   typeTextActive: {
@@ -285,13 +285,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#5A4A42',
+    color: '#1E5C35',
     letterSpacing: 0.5,
   },
   saveButton: {
     flex: 1,
     padding: 15,
-    backgroundColor: '#FF7F5C',
+    backgroundColor: '#5DB87A',
     borderRadius: 10,
     marginLeft: 10,
     alignItems: 'center',
