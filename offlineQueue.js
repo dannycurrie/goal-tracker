@@ -36,6 +36,8 @@ export const offlineQueue = {
   // Get current queue
   getQueue: () => queue,
 
+  getQueueString: () => queue.map(op => JSON.stringify(op)).join('\n'),
+
   // Check if queue has pending operations
   hasPending: () => queue.length > 0,
 

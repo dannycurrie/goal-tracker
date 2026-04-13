@@ -69,7 +69,7 @@ function App() {
     try {
       // Process any queued offline operations first
       if (offlineQueue.hasPending()) {
-        logger.info('Processing offline queue');
+        logger.info('Processing offline queue', { queue: offlineQueue.getQueueString() });
         const result = await offlineQueue.processQueue(metricsApi);
         logger.info('Offline queue processed', { processed: result.processed, failed: result.failed });
       }
