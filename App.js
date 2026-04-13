@@ -32,9 +32,6 @@ function App() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInMetric, setCheckInMetric] = useState(null);
   const [metricAverages, setMetricAverages] = useState({});
-  // Tracks the calendar date (toDateString()) on which we last ran the reset check.
-  // Using a ref avoids triggering re-renders when updated.
-  const lastResetCheckDateRef = useRef(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAppleHealthScreen, setShowAppleHealthScreen] = useState(false);
   const [showExerciseChecklist, setShowExerciseChecklist] = useState(false);
@@ -126,10 +123,30 @@ function App() {
         lastReset: metric.last_reset,
       }));
 
-      setMetrics(formattedMetrics);
+      // Apply any pending resets to server data before updating state.
+      // Without this, stale server values (with old lastReset) would overwrite
+      // the optimistic local reset, causing a visible flicker.
+      const now = new Date();
+      const metricsToReset = formattedMetrics.filter(m => needsReset(m, now));
+      let finalMetrics = formattedMetrics;
+      if (metricsToReset.length > 0) {
+        logger.info('Resetting metrics on server fetch', { count: metricsToReset.length });
+        finalMetrics = formattedMetrics.map(m =>
+          metricsToReset.find(r => r.id === m.id)
+            ? { ...m, currentValue: 0, lastReset: now.toISOString() }
+            : m
+        );
+        for (const metric of metricsToReset) {
+          metricsApi.reset(metric.id).catch(error => {
+            logger.error('Failed to reset metric', { metricId: metric.id, error });
+          });
+        }
+      }
+
+      setMetrics(finalMetrics);
       // Cache the fresh data
-      await storage.saveMetrics(formattedMetrics);
-      return formattedMetrics;
+      await storage.saveMetrics(finalMetrics);
+      return finalMetrics;
     } catch (error) {
       logger.error('Failed to load metrics', { error });
       // Keep current metrics on error - don't overwrite with empty array
@@ -530,16 +547,13 @@ function App() {
     }
   }, [metrics]);
 
-  // Run reset check whenever metrics change, but at most once per calendar day.
-  // Using the date string (not a boolean flag) means the check re-runs automatically
-  // when the day rolls over, even if the app stays open across the boundary.
+  // Run reset check whenever metrics change (while not loading).
+  // checkAndResetMetrics is self-limiting: once metrics are reset their lastReset
+  // moves into the current period, so needsReset returns false and further calls
+  // are cheap no-ops with no API calls or state changes.
   useEffect(() => {
     if (metrics.length > 0 && !loading) {
-      const today = new Date().toDateString();
-      if (lastResetCheckDateRef.current !== today) {
-        lastResetCheckDateRef.current = today;
-        checkAndResetMetrics();
-      }
+      checkAndResetMetrics();
     }
   }, [metrics, loading]);
 
